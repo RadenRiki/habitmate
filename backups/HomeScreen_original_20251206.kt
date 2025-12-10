@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,26 +30,28 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-import kotlinx.coroutines.launch
 
 // ---------- COLORS & THEME ----------
 
+// Enhanced Ocean Theme - Minimalist/Refined
 private val PrimaryColor = Color(0xFF2563EB) // Blue-600 (Vibrant Blue)
 private val SecondaryColor = Color(0xFF06B6D4) // Cyan-500
-private val BackgroundColor = Color(0xFFF8FAFC) // Slate-50 (softer)
+private val OceanDeep = Color(0xFF0F4C81) // Deep Ocean Blue
+private val OceanLight = Color(0xFFE3F2FD) // Very light blue
+private val AquaSoft = Color(0xFFB3E5FC) // Soft aqua
+private val OceanMist = Color(0xFFF0F9FF) // Almost white with blue hint
+private val BackgroundColor = Color(0xFFF0F9FF) // Ocean Mist background
 private val CardSurface = Color(0xFFFFFFFF)
 private val TextPrimary = Color(0xFF111827) // Gray 900
 private val TextSecondary = Color(0xFF6B7280) // Gray 500
@@ -62,9 +62,13 @@ private val NavSurface = Color(0xFFFFFFFF) // White background
 private val NavSlate = Color(0xFF1E293B) // Slate-800 for selected pill
 private val NavIconInactive = Color(0xFF64748B) // Slate-500 for unselected icons
 
-// Gradient untuk kartu progress - Ocean Blue Theme
+// Gradients - Refined Ocean Theme
 private val PrimaryGradient =
         Brush.linearGradient(colors = listOf(Color(0xFF2563EB), Color(0xFF06B6D4)))
+private val SoftOceanGradient =
+        Brush.linearGradient(colors = listOf(Color(0xFFE3F2FD), Color(0xFFB3E5FC)))
+private val EmojiGradient =
+        Brush.linearGradient(colors = listOf(Color(0xFFE3F2FD), Color(0xFFB3E5FC)))
 
 // ---------- MODELS ----------
 
@@ -103,36 +107,20 @@ enum class HabitMateDestination {
 
 // ---------- ROOT SCREEN ----------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
+fun HabitMateHomeScreen() {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
-        var selectedHabit by remember { mutableStateOf<HabitUi?>(null) }
-        var showAddSheet by remember { mutableStateOf(false) }
-        var startAnimation by rememberSaveable { mutableStateOf(false) }
-        val sheetState = rememberModalBottomSheetState()
 
-        LaunchedEffect(Unit) {
-            startAnimation = true
-        }
-
-        // Logic tanggal - 7 hari ke belakang, 90 hari ke depan
+        // Logic tanggal tetap sama
         val dateItems = remember {
                 val start = today.minusDays(7)
-                val end = today.plusDays(90) // Extended to 90 days for future scrolling
+                val end = today.plusDays(14) // Sedikit dikurangi agar tidak terlalu panjang loadnya
                 generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(end) }.toList()
         }
 
-        // LazyListState for the date strip
-        val todayIndex = remember(dateItems, today) { dateItems.indexOf(today).coerceAtLeast(0) }
-        val dateStripListState = rememberLazyListState(initialFirstVisibleItemIndex = todayIndex)
-
         var currentDestination by remember { mutableStateOf(HabitMateDestination.HOME) }
         var selectedFilter by remember { mutableStateOf(HabitTimeFilter.ALL_DAY) }
-
-        // Coroutine scope for animated scrolling
-        val coroutineScope = rememberCoroutineScope()
 
         // Dummy habits dengan Emoji
         val habits = remember {
@@ -205,20 +193,13 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
                         ModernTopBar(
                                 title = "Hello, Mate! 👋", // Sapaan personal
                                 subtitle = dateLabelFor(selectedDate, today),
-                                onSettingsClick = { /* TODO */},
-                                onDateClick = {
-                                        // Quick return to today with animated scroll
-                                        selectedDate = today
-                                        coroutineScope.launch {
-                                                dateStripListState.animateScrollToItem(todayIndex)
-                                        }
-                                }
+                                onSettingsClick = { /* TODO */}
                         )
                 },
                 floatingActionButton = {
                         if (currentDestination == HabitMateDestination.HOME) {
                                 FloatingActionButton(
-                                        onClick = { showAddSheet = true },
+                                        onClick = { /* TODO */},
                                         containerColor = PrimaryColor,
                                         shape = RoundedCornerShape(16.dp),
                                         elevation = FloatingActionButtonDefaults.elevation(4.dp)
@@ -264,63 +245,10 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
                                                         habits[index] =
                                                                 h.copy(isDoneToday = !h.isDoneToday)
                                                 }
-                                        },
-                                        dateStripListState = dateStripListState,
-                                        onHabitClick = { selectedHabit = it },
-                                        startAnimation = startAnimation
+                                        }
                                 )
                         }
                         else -> PlaceholderScreen(modifier = Modifier.padding(innerPadding))
-                }
-        }
-
-        if (showAddSheet) {
-                ModalBottomSheet(
-                        onDismissRequest = { showAddSheet = false },
-                        sheetState = rememberModalBottomSheetState(),
-                        containerColor = CardSurface
-                ) {
-                        HabitTemplateSheet(
-                                onClose = { showAddSheet = false },
-                                onCreateCustom = {
-                                        showAddSheet = false
-                                        onNavigateToCreateHabit()
-                                },
-                                onTemplateSelect = { template ->
-                                        // TODO: Implement quick create from template
-                                        showAddSheet = false
-                                }
-                        )
-                }
-        }
-
-        if (selectedHabit != null) {
-                ModalBottomSheet(
-                        onDismissRequest = { selectedHabit = null },
-                        sheetState = sheetState,
-                        containerColor = CardSurface
-                ) {
-                        HabitDetailScreen(
-                                habit = selectedHabit!!,
-                                onClose = {
-                                        coroutineScope
-                                                .launch { sheetState.hide() }
-                                                .invokeOnCompletion {
-                                                        if (!sheetState.isVisible)
-                                                                selectedHabit = null
-                                                }
-                                },
-                                onEdit = { /* TODO: Edit */},
-                                onDelete = { /* TODO: Delete */},
-                                onToggleCompletion = { id ->
-                                        // Reuse toggle logic from parent
-                                        val index = habits.indexOfFirst { it.id == id }
-                                        if (index != -1) {
-                                                val h = habits[index]
-                                                habits[index] = h.copy(isDoneToday = !h.isDoneToday)
-                                        }
-                                }
-                        )
                 }
         }
 }
@@ -329,12 +257,7 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModernTopBar(
-        title: String,
-        subtitle: String,
-        onSettingsClick: () -> Unit,
-        onDateClick: () -> Unit = {}
-) {
+fun ModernTopBar(title: String, subtitle: String, onSettingsClick: () -> Unit) {
         TopAppBar(
                 title = {
                         Column {
@@ -353,8 +276,7 @@ fun ModernTopBar(
                                                 MaterialTheme.typography.bodyMedium.copy(
                                                         color = TextSecondary,
                                                         fontWeight = FontWeight.Medium
-                                                ),
-                                        modifier = Modifier.clickable { onDateClick() }
+                                                )
                                 )
                         }
                 },
@@ -556,10 +478,7 @@ fun TodayContent(
         progressToday: Float,
         doneToday: Int,
         totalHabitsToday: Int,
-        onToggleHabit: (Int) -> Unit,
-        dateStripListState: androidx.compose.foundation.lazy.LazyListState, // Added parameter
-        onHabitClick: (HabitUi) -> Unit,
-        startAnimation: Boolean
+        onToggleHabit: (Int) -> Unit
 ) {
         LazyColumn(
                 modifier = modifier.background(BackgroundColor),
@@ -570,8 +489,7 @@ fun TodayContent(
                                 today = today,
                                 selectedDate = selectedDate,
                                 dates = dateItems,
-                                onDateSelected = onDateSelected,
-                                listState = dateStripListState
+                                onDateSelected = onDateSelected
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -592,13 +510,7 @@ fun TodayContent(
                         Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                habitListGrouped(
-                        habits = habits,
-                        filter = selectedFilter,
-                        onToggle = onToggleHabit,
-                        onHabitClick = onHabitClick,
-                        startAnimation = startAnimation
-                )
+                habitListGrouped(habits = habits, filter = selectedFilter, onToggle = onToggleHabit)
         }
 }
 
@@ -609,11 +521,9 @@ fun ModernDateStrip(
         today: LocalDate,
         selectedDate: LocalDate,
         dates: List<LocalDate>,
-        onDateSelected: (LocalDate) -> Unit,
-        listState: androidx.compose.foundation.lazy.LazyListState // Added parameter
+        onDateSelected: (LocalDate) -> Unit
 ) {
         LazyRow(
-                state = listState,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 24.dp)
         ) {
@@ -627,18 +537,25 @@ fun ModernDateStrip(
                                         .uppercase()
                         val dayNum = date.dayOfMonth.toString()
 
+                        // Animated selection state
+                        val animatedElevation by
+                                animateDpAsState(
+                                        targetValue = if (isSelected) 8.dp else 0.dp,
+                                        animationSpec = tween(250),
+                                        label = "elevation"
+                                )
+
                         val backgroundColor = if (isSelected) PrimaryColor else CardSurface
                         val contentColor = if (isSelected) Color.White else TextSecondary
                         val border =
                                 if (isSelected) null
-                                else BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f))
-                        val elevation = if (isSelected) 8.dp else 0.dp
+                                else BorderStroke(1.dp, OceanLight.copy(alpha = 0.8f))
 
                         Surface(
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(24.dp),
                                 color = backgroundColor,
                                 border = border,
-                                shadowElevation = elevation,
+                                shadowElevation = animatedElevation,
                                 modifier = Modifier.width(60.dp).clickable { onDateSelected(date) }
                         ) {
                                 Column(
@@ -705,20 +622,33 @@ fun GradientProgressCard(progress: Float, done: Int, total: Int) {
                 )
 
         Card(
-                shape = RoundedCornerShape(32.dp),
-                elevation = CardDefaults.cardElevation(10.dp),
+                shape = RoundedCornerShape(28.dp),
+                elevation = CardDefaults.cardElevation(6.dp),
                 modifier = Modifier.fillMaxWidth()
         ) {
-                Box(modifier = Modifier.background(PrimaryGradient).padding(24.dp)) {
-                        // Decorative Circles
+                Box(
+                        modifier =
+                                Modifier.background(
+                                                Brush.linearGradient(
+                                                        colors =
+                                                                listOf(
+                                                                        Color(0xFF3B82F6),
+                                                                        Color(0xFF2563EB),
+                                                                        Color(0xFF06B6D4)
+                                                                )
+                                                )
+                                        )
+                                        .padding(24.dp)
+                ) {
+                        // Softer Decorative Circles
                         Canvas(modifier = Modifier.matchParentSize()) {
                                 drawCircle(
-                                        color = Color.White.copy(alpha = 0.1f),
+                                        color = Color.White.copy(alpha = 0.08f),
                                         radius = 200f,
                                         center = androidx.compose.ui.geometry.Offset(size.width, 0f)
                                 )
                                 drawCircle(
-                                        color = Color.White.copy(alpha = 0.05f),
+                                        color = Color.White.copy(alpha = 0.04f),
                                         radius = 150f,
                                         center =
                                                 androidx.compose.ui.geometry.Offset(0f, size.height)
@@ -739,7 +669,7 @@ fun GradientProgressCard(progress: Float, done: Int, total: Int) {
                                                                         .copy(
                                                                                 fontWeight =
                                                                                         FontWeight
-                                                                                                .Black,
+                                                                                                .ExtraBold,
                                                                                 color = Color.White
                                                                         )
                                                 )
@@ -756,7 +686,7 @@ fun GradientProgressCard(progress: Float, done: Int, total: Int) {
                                                                                         Color.White
                                                                                                 .copy(
                                                                                                         alpha =
-                                                                                                                0.9f
+                                                                                                                0.95f
                                                                                                 ),
                                                                                 fontWeight =
                                                                                         FontWeight
@@ -764,21 +694,21 @@ fun GradientProgressCard(progress: Float, done: Int, total: Int) {
                                                                         )
                                                 )
                                         }
-                                        // Persentase bulat
+                                        // Refined percentage circle
                                         Box(
                                                 contentAlignment = Alignment.Center,
                                                 modifier =
-                                                        Modifier.size(56.dp)
+                                                        Modifier.size(60.dp)
                                                                 .background(
                                                                         Color.White.copy(
-                                                                                alpha = 0.2f
+                                                                                alpha = 0.15f
                                                                         ),
                                                                         CircleShape
                                                                 )
                                                                 .border(
                                                                         2.dp,
                                                                         Color.White.copy(
-                                                                                alpha = 0.3f
+                                                                                alpha = 0.25f
                                                                         ),
                                                                         CircleShape
                                                                 )
@@ -830,7 +760,7 @@ fun GradientProgressCard(progress: Float, done: Int, total: Int) {
                                                         MaterialTheme.typography.labelMedium.copy(
                                                                 color =
                                                                         Color.White.copy(
-                                                                                alpha = 0.8f
+                                                                                alpha = 0.85f
                                                                         ),
                                                                 fontWeight = FontWeight.Bold
                                                         )
@@ -868,11 +798,11 @@ fun FilterCapsuleRow(selected: HabitTimeFilter, onSelected: (HabitTimeFilter) ->
         ) {
                 items(items) { (filter, label) ->
                         val isSelected = filter == selected
-                        val bg = if (isSelected) NavSlate else CardSurface
+                        val bg = if (isSelected) PrimaryColor else CardSurface
                         val textColor = if (isSelected) Color.White else TextSecondary
                         val border =
                                 if (isSelected) null
-                                else BorderStroke(1.dp, Color.Black.copy(alpha = 0.08f))
+                                else BorderStroke(1.dp, OceanLight.copy(alpha = 0.8f))
 
                         Surface(
                                 shape = RoundedCornerShape(50),
@@ -904,9 +834,7 @@ fun FilterCapsuleRow(selected: HabitTimeFilter, onSelected: (HabitTimeFilter) ->
 fun LazyListScope.habitListGrouped(
         habits: List<HabitUi>,
         filter: HabitTimeFilter,
-        onToggle: (Int) -> Unit,
-        onHabitClick: (HabitUi) -> Unit,
-        startAnimation: Boolean
+        onToggle: (Int) -> Unit
 ) {
         val filteredHabits =
                 if (filter == HabitTimeFilter.ALL_DAY) {
@@ -932,161 +860,244 @@ fun LazyListScope.habitListGrouped(
                         }
                 }
         } else {
-
-                itemsIndexed(filteredHabits) { index, habit ->
-                        val alpha by animateFloatAsState(
-                            targetValue = if (startAnimation) 1f else 0f,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "alpha"
-                        )
-                        val slideY by animateDpAsState(
-                            targetValue = if (startAnimation) 0.dp else 50.dp,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "slideY"
-                        )
-                        
-                        Box(modifier = Modifier.graphicsLayer {
-                            this.alpha = alpha
-                            translationY = slideY.toPx()
-                        }) {
-                            HabitItem(
-                                    habit = habit,
-                                    onToggle = { onToggle(habit.id) },
-                                    onClick = { onHabitClick(habit) }
-                            )
-                        }
+                items(filteredHabits) { habit ->
+                        HabitItem(habit = habit, onToggle = { onToggle(habit.id) })
                         Spacer(modifier = Modifier.height(12.dp))
                 }
         }
 }
 
 @Composable
-fun HabitItem(habit: HabitUi, onToggle: () -> Unit, onClick: () -> Unit) {
+fun HabitItem(habit: HabitUi, onToggle: () -> Unit) {
+        // Animation for completion state
+        val isCompleted = habit.isDoneToday
+        val progress = if (habit.target > 0) habit.current.toFloat() / habit.target else 0f
+
         Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = CardSurface),
-                elevation = CardDefaults.cardElevation(2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, OceanLight.copy(alpha = 0.5f)),
                 modifier =
-                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { onClick() }
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { onToggle() }
         ) {
                 Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(20.dp),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
+                        // Redesigned Emoji Container with Ocean Gradient
                         Box(
                                 modifier =
-                                        Modifier.size(48.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(Color.Gray.copy(alpha = 0.1f)),
+                                        Modifier.size(56.dp)
+                                                .clip(CircleShape)
+                                                .background(EmojiGradient)
+                                                .border(
+                                                        2.dp,
+                                                        PrimaryColor.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                ),
                                 contentAlignment = Alignment.Center
                         ) {
                                 Text(
                                         text = habit.emoji,
-                                        style = MaterialTheme.typography.headlineSmall
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontSize = 28.sp
                                 )
                         }
+
                         Spacer(modifier = Modifier.width(16.dp))
+
                         Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                         habit.title,
                                         style =
                                                 MaterialTheme.typography.titleMedium.copy(
-                                                        fontWeight = FontWeight.Bold
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = TextPrimary
                                                 )
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                        "${habit.current}/${habit.target} ${habit.unitLabel}",
-                                        style =
-                                                MaterialTheme.typography.bodySmall.copy(
-                                                        color = TextSecondary
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        Text(
+                                                "${habit.current}/${habit.target} ${habit.unitLabel}",
+                                                style =
+                                                        MaterialTheme.typography.bodySmall.copy(
+                                                                color = TextSecondary,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
+                                        )
+                                        if (habit.streak > 0) {
+                                                Text(
+                                                        "•",
+                                                        style =
+                                                                MaterialTheme.typography.bodySmall
+                                                                        .copy(
+                                                                                color =
+                                                                                        TextSecondary
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.5f
+                                                                                                )
+                                                                        )
                                                 )
-                                )
+                                                Text(
+                                                        "🔥 ${habit.streak} day${if (habit.streak > 1) "s" else ""}",
+                                                        style =
+                                                                MaterialTheme.typography.bodySmall
+                                                                        .copy(
+                                                                                color =
+                                                                                        Color(
+                                                                                                0xFFFF6B35
+                                                                                        ),
+                                                                                fontWeight =
+                                                                                        FontWeight
+                                                                                                .Bold
+                                                                        )
+                                                )
+                                        }
+                                }
                         }
-                        AnimatedOceanCheckbox(
-                                checked = habit.isDoneToday,
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Custom Animated Checkbox with Progress Ring
+                        CustomHabitCheckbox(
+                                checked = isCompleted,
+                                progress = progress,
                                 onCheckedChange = { onToggle() }
                         )
                 }
         }
 }
 
-// ---------- COMPONENT: CUSTOM ANIMATED CHECKBOX ----------
-
 @Composable
-fun AnimatedOceanCheckbox(
-        checked: Boolean,
-        onCheckedChange: (Boolean) -> Unit,
-        modifier: Modifier = Modifier
-) {
-        // Animate the scale when checked/unchecked
-        val scale by
+fun CustomHabitCheckbox(checked: Boolean, progress: Float, onCheckedChange: () -> Unit) {
+        val animatedProgress by
                 animateFloatAsState(
-                        targetValue = if (checked) 1.0f else 0.9f,
-                        animationSpec =
-                                androidx.compose.animation.core.spring(
-                                        dampingRatio =
-                                                androidx.compose.animation.core.Spring
-                                                        .DampingRatioMediumBouncy,
-                                        stiffness =
-                                                androidx.compose.animation.core.Spring.StiffnessLow
-                                ),
-                        label = "checkboxScale"
+                        targetValue = if (checked) 1f else progress,
+                        animationSpec = tween(durationMillis = 300),
+                        label = "progress"
                 )
 
-        // Animate the checkmark alpha
         val checkmarkAlpha by
                 animateFloatAsState(
                         targetValue = if (checked) 1f else 0f,
                         animationSpec = tween(durationMillis = 200),
-                        label = "checkmarkAlpha"
+                        label = "checkmark"
                 )
 
-        val backgroundColor = if (checked) PrimaryColor else Color.Transparent
-        val borderColor = if (checked) PrimaryColor else TextSecondary.copy(alpha = 0.3f)
+        val backgroundColor by
+                androidx.compose.animation.animateColorAsState(
+                        targetValue = if (checked) PrimaryColor else Color.Transparent,
+                        animationSpec = tween(durationMillis = 200),
+                        label = "bgColor"
+                )
 
         Box(
                 modifier =
-                        modifier.size(28.dp)
-                                .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
-                                }
-                                .clip(CircleShape)
-                                .background(backgroundColor)
-                                .border(2.dp, borderColor, CircleShape)
-                                .clickable(onClick = { onCheckedChange(!checked) }),
+                        Modifier.size(48.dp).clickable(
+                                        interactionSource =
+                                                remember {
+                                                        androidx.compose.foundation.interaction
+                                                                .MutableInteractionSource()
+                                                },
+                                        indication = null
+                                ) { onCheckedChange() },
                 contentAlignment = Alignment.Center
         ) {
-                // Checkmark icon
-                if (checked) {
-                        Canvas(
-                                modifier =
-                                        Modifier.size(16.dp).graphicsLayer {
-                                                alpha = checkmarkAlpha
-                                        }
-                        ) {
-                                val strokeWidth = 2.5f
-                                val checkPath =
-                                        androidx.compose.ui.graphics.Path().apply {
-                                                moveTo(size.width * 0.2f, size.height * 0.5f)
-                                                lineTo(size.width * 0.4f, size.height * 0.7f)
-                                                lineTo(size.width * 0.8f, size.height * 0.3f)
-                                        }
-                                drawPath(
-                                        path = checkPath,
-                                        color = Color.White,
+                // Progress Ring
+                Canvas(modifier = Modifier.size(48.dp)) {
+                        val strokeWidth = 3.dp.toPx()
+                        val radius = (size.minDimension - strokeWidth) / 2
+
+                        // Background circle
+                        drawCircle(
+                                color = OceanLight,
+                                radius = radius,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth)
+                        )
+
+                        // Progress arc
+                        if (animatedProgress > 0f) {
+                                drawArc(
+                                        brush =
+                                                Brush.sweepGradient(
+                                                        colors =
+                                                                listOf(
+                                                                        PrimaryColor,
+                                                                        SecondaryColor,
+                                                                        PrimaryColor
+                                                                )
+                                                ),
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * animatedProgress,
+                                        useCenter = false,
                                         style =
                                                 androidx.compose.ui.graphics.drawscope.Stroke(
-                                                        width = strokeWidth,
+                                                        strokeWidth,
                                                         cap =
                                                                 androidx.compose.ui.graphics
-                                                                        .StrokeCap.Round,
-                                                        join =
-                                                                androidx.compose.ui.graphics
-                                                                        .StrokeJoin.Round
+                                                                        .StrokeCap.Round
                                                 )
                                 )
+                        }
+                }
+
+                // Inner circle with checkmark
+                Box(
+                        modifier =
+                                Modifier.size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(backgroundColor)
+                                        .border(
+                                                2.dp,
+                                                if (checked) Color.Transparent
+                                                else OceanLight.copy(alpha = 0.5f),
+                                                CircleShape
+                                        ),
+                        contentAlignment = Alignment.Center
+                ) {
+                        // Checkmark
+                        if (checkmarkAlpha > 0f) {
+                                Canvas(modifier = Modifier.size(16.dp)) {
+                                        val path =
+                                                androidx.compose.ui.graphics.Path().apply {
+                                                        moveTo(
+                                                                size.width * 0.2f,
+                                                                size.height * 0.5f
+                                                        )
+                                                        lineTo(
+                                                                size.width * 0.4f,
+                                                                size.height * 0.7f
+                                                        )
+                                                        lineTo(
+                                                                size.width * 0.8f,
+                                                                size.height * 0.3f
+                                                        )
+                                                }
+                                        drawPath(
+                                                path = path,
+                                                color = Color.White.copy(alpha = checkmarkAlpha),
+                                                style =
+                                                        androidx.compose.ui.graphics.drawscope
+                                                                .Stroke(
+                                                                        width = 2.5.dp.toPx(),
+                                                                        cap =
+                                                                                androidx.compose.ui
+                                                                                        .graphics
+                                                                                        .StrokeCap
+                                                                                        .Round,
+                                                                        join =
+                                                                                androidx.compose.ui
+                                                                                        .graphics
+                                                                                        .StrokeJoin
+                                                                                        .Round
+                                                                )
+                                        )
+                                }
                         }
                 }
         }

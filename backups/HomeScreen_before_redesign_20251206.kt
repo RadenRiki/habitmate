@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,20 +30,17 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-import kotlinx.coroutines.launch
 
 // ---------- COLORS & THEME ----------
 
@@ -103,36 +98,20 @@ enum class HabitMateDestination {
 
 // ---------- ROOT SCREEN ----------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
+fun HabitMateHomeScreen() {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
-        var selectedHabit by remember { mutableStateOf<HabitUi?>(null) }
-        var showAddSheet by remember { mutableStateOf(false) }
-        var startAnimation by rememberSaveable { mutableStateOf(false) }
-        val sheetState = rememberModalBottomSheetState()
 
-        LaunchedEffect(Unit) {
-            startAnimation = true
-        }
-
-        // Logic tanggal - 7 hari ke belakang, 90 hari ke depan
+        // Logic tanggal tetap sama
         val dateItems = remember {
                 val start = today.minusDays(7)
-                val end = today.plusDays(90) // Extended to 90 days for future scrolling
+                val end = today.plusDays(14) // Sedikit dikurangi agar tidak terlalu panjang loadnya
                 generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(end) }.toList()
         }
 
-        // LazyListState for the date strip
-        val todayIndex = remember(dateItems, today) { dateItems.indexOf(today).coerceAtLeast(0) }
-        val dateStripListState = rememberLazyListState(initialFirstVisibleItemIndex = todayIndex)
-
         var currentDestination by remember { mutableStateOf(HabitMateDestination.HOME) }
         var selectedFilter by remember { mutableStateOf(HabitTimeFilter.ALL_DAY) }
-
-        // Coroutine scope for animated scrolling
-        val coroutineScope = rememberCoroutineScope()
 
         // Dummy habits dengan Emoji
         val habits = remember {
@@ -205,20 +184,13 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
                         ModernTopBar(
                                 title = "Hello, Mate! 👋", // Sapaan personal
                                 subtitle = dateLabelFor(selectedDate, today),
-                                onSettingsClick = { /* TODO */},
-                                onDateClick = {
-                                        // Quick return to today with animated scroll
-                                        selectedDate = today
-                                        coroutineScope.launch {
-                                                dateStripListState.animateScrollToItem(todayIndex)
-                                        }
-                                }
+                                onSettingsClick = { /* TODO */}
                         )
                 },
                 floatingActionButton = {
                         if (currentDestination == HabitMateDestination.HOME) {
                                 FloatingActionButton(
-                                        onClick = { showAddSheet = true },
+                                        onClick = { /* TODO */},
                                         containerColor = PrimaryColor,
                                         shape = RoundedCornerShape(16.dp),
                                         elevation = FloatingActionButtonDefaults.elevation(4.dp)
@@ -264,63 +236,10 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
                                                         habits[index] =
                                                                 h.copy(isDoneToday = !h.isDoneToday)
                                                 }
-                                        },
-                                        dateStripListState = dateStripListState,
-                                        onHabitClick = { selectedHabit = it },
-                                        startAnimation = startAnimation
+                                        }
                                 )
                         }
                         else -> PlaceholderScreen(modifier = Modifier.padding(innerPadding))
-                }
-        }
-
-        if (showAddSheet) {
-                ModalBottomSheet(
-                        onDismissRequest = { showAddSheet = false },
-                        sheetState = rememberModalBottomSheetState(),
-                        containerColor = CardSurface
-                ) {
-                        HabitTemplateSheet(
-                                onClose = { showAddSheet = false },
-                                onCreateCustom = {
-                                        showAddSheet = false
-                                        onNavigateToCreateHabit()
-                                },
-                                onTemplateSelect = { template ->
-                                        // TODO: Implement quick create from template
-                                        showAddSheet = false
-                                }
-                        )
-                }
-        }
-
-        if (selectedHabit != null) {
-                ModalBottomSheet(
-                        onDismissRequest = { selectedHabit = null },
-                        sheetState = sheetState,
-                        containerColor = CardSurface
-                ) {
-                        HabitDetailScreen(
-                                habit = selectedHabit!!,
-                                onClose = {
-                                        coroutineScope
-                                                .launch { sheetState.hide() }
-                                                .invokeOnCompletion {
-                                                        if (!sheetState.isVisible)
-                                                                selectedHabit = null
-                                                }
-                                },
-                                onEdit = { /* TODO: Edit */},
-                                onDelete = { /* TODO: Delete */},
-                                onToggleCompletion = { id ->
-                                        // Reuse toggle logic from parent
-                                        val index = habits.indexOfFirst { it.id == id }
-                                        if (index != -1) {
-                                                val h = habits[index]
-                                                habits[index] = h.copy(isDoneToday = !h.isDoneToday)
-                                        }
-                                }
-                        )
                 }
         }
 }
@@ -329,12 +248,7 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModernTopBar(
-        title: String,
-        subtitle: String,
-        onSettingsClick: () -> Unit,
-        onDateClick: () -> Unit = {}
-) {
+fun ModernTopBar(title: String, subtitle: String, onSettingsClick: () -> Unit) {
         TopAppBar(
                 title = {
                         Column {
@@ -353,8 +267,7 @@ fun ModernTopBar(
                                                 MaterialTheme.typography.bodyMedium.copy(
                                                         color = TextSecondary,
                                                         fontWeight = FontWeight.Medium
-                                                ),
-                                        modifier = Modifier.clickable { onDateClick() }
+                                                )
                                 )
                         }
                 },
@@ -556,10 +469,7 @@ fun TodayContent(
         progressToday: Float,
         doneToday: Int,
         totalHabitsToday: Int,
-        onToggleHabit: (Int) -> Unit,
-        dateStripListState: androidx.compose.foundation.lazy.LazyListState, // Added parameter
-        onHabitClick: (HabitUi) -> Unit,
-        startAnimation: Boolean
+        onToggleHabit: (Int) -> Unit
 ) {
         LazyColumn(
                 modifier = modifier.background(BackgroundColor),
@@ -570,8 +480,7 @@ fun TodayContent(
                                 today = today,
                                 selectedDate = selectedDate,
                                 dates = dateItems,
-                                onDateSelected = onDateSelected,
-                                listState = dateStripListState
+                                onDateSelected = onDateSelected
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -592,13 +501,7 @@ fun TodayContent(
                         Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                habitListGrouped(
-                        habits = habits,
-                        filter = selectedFilter,
-                        onToggle = onToggleHabit,
-                        onHabitClick = onHabitClick,
-                        startAnimation = startAnimation
-                )
+                habitListGrouped(habits = habits, filter = selectedFilter, onToggle = onToggleHabit)
         }
 }
 
@@ -609,11 +512,9 @@ fun ModernDateStrip(
         today: LocalDate,
         selectedDate: LocalDate,
         dates: List<LocalDate>,
-        onDateSelected: (LocalDate) -> Unit,
-        listState: androidx.compose.foundation.lazy.LazyListState // Added parameter
+        onDateSelected: (LocalDate) -> Unit
 ) {
         LazyRow(
-                state = listState,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 24.dp)
         ) {
@@ -904,9 +805,7 @@ fun FilterCapsuleRow(selected: HabitTimeFilter, onSelected: (HabitTimeFilter) ->
 fun LazyListScope.habitListGrouped(
         habits: List<HabitUi>,
         filter: HabitTimeFilter,
-        onToggle: (Int) -> Unit,
-        onHabitClick: (HabitUi) -> Unit,
-        startAnimation: Boolean
+        onToggle: (Int) -> Unit
 ) {
         val filteredHabits =
                 if (filter == HabitTimeFilter.ALL_DAY) {
@@ -932,42 +831,21 @@ fun LazyListScope.habitListGrouped(
                         }
                 }
         } else {
-
-                itemsIndexed(filteredHabits) { index, habit ->
-                        val alpha by animateFloatAsState(
-                            targetValue = if (startAnimation) 1f else 0f,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "alpha"
-                        )
-                        val slideY by animateDpAsState(
-                            targetValue = if (startAnimation) 0.dp else 50.dp,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "slideY"
-                        )
-                        
-                        Box(modifier = Modifier.graphicsLayer {
-                            this.alpha = alpha
-                            translationY = slideY.toPx()
-                        }) {
-                            HabitItem(
-                                    habit = habit,
-                                    onToggle = { onToggle(habit.id) },
-                                    onClick = { onHabitClick(habit) }
-                            )
-                        }
+                items(filteredHabits) { habit ->
+                        HabitItem(habit = habit, onToggle = { onToggle(habit.id) })
                         Spacer(modifier = Modifier.height(12.dp))
                 }
         }
 }
 
 @Composable
-fun HabitItem(habit: HabitUi, onToggle: () -> Unit, onClick: () -> Unit) {
+fun HabitItem(habit: HabitUi, onToggle: () -> Unit) {
         Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = CardSurface),
                 elevation = CardDefaults.cardElevation(2.dp),
                 modifier =
-                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { onClick() }
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { onToggle() }
         ) {
                 Row(
                         modifier = Modifier.padding(16.dp),
@@ -1003,91 +881,7 @@ fun HabitItem(habit: HabitUi, onToggle: () -> Unit, onClick: () -> Unit) {
                                                 )
                                 )
                         }
-                        AnimatedOceanCheckbox(
-                                checked = habit.isDoneToday,
-                                onCheckedChange = { onToggle() }
-                        )
-                }
-        }
-}
-
-// ---------- COMPONENT: CUSTOM ANIMATED CHECKBOX ----------
-
-@Composable
-fun AnimatedOceanCheckbox(
-        checked: Boolean,
-        onCheckedChange: (Boolean) -> Unit,
-        modifier: Modifier = Modifier
-) {
-        // Animate the scale when checked/unchecked
-        val scale by
-                animateFloatAsState(
-                        targetValue = if (checked) 1.0f else 0.9f,
-                        animationSpec =
-                                androidx.compose.animation.core.spring(
-                                        dampingRatio =
-                                                androidx.compose.animation.core.Spring
-                                                        .DampingRatioMediumBouncy,
-                                        stiffness =
-                                                androidx.compose.animation.core.Spring.StiffnessLow
-                                ),
-                        label = "checkboxScale"
-                )
-
-        // Animate the checkmark alpha
-        val checkmarkAlpha by
-                animateFloatAsState(
-                        targetValue = if (checked) 1f else 0f,
-                        animationSpec = tween(durationMillis = 200),
-                        label = "checkmarkAlpha"
-                )
-
-        val backgroundColor = if (checked) PrimaryColor else Color.Transparent
-        val borderColor = if (checked) PrimaryColor else TextSecondary.copy(alpha = 0.3f)
-
-        Box(
-                modifier =
-                        modifier.size(28.dp)
-                                .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
-                                }
-                                .clip(CircleShape)
-                                .background(backgroundColor)
-                                .border(2.dp, borderColor, CircleShape)
-                                .clickable(onClick = { onCheckedChange(!checked) }),
-                contentAlignment = Alignment.Center
-        ) {
-                // Checkmark icon
-                if (checked) {
-                        Canvas(
-                                modifier =
-                                        Modifier.size(16.dp).graphicsLayer {
-                                                alpha = checkmarkAlpha
-                                        }
-                        ) {
-                                val strokeWidth = 2.5f
-                                val checkPath =
-                                        androidx.compose.ui.graphics.Path().apply {
-                                                moveTo(size.width * 0.2f, size.height * 0.5f)
-                                                lineTo(size.width * 0.4f, size.height * 0.7f)
-                                                lineTo(size.width * 0.8f, size.height * 0.3f)
-                                        }
-                                drawPath(
-                                        path = checkPath,
-                                        color = Color.White,
-                                        style =
-                                                androidx.compose.ui.graphics.drawscope.Stroke(
-                                                        width = strokeWidth,
-                                                        cap =
-                                                                androidx.compose.ui.graphics
-                                                                        .StrokeCap.Round,
-                                                        join =
-                                                                androidx.compose.ui.graphics
-                                                                        .StrokeJoin.Round
-                                                )
-                                )
-                        }
+                        Checkbox(checked = habit.isDoneToday, onCheckedChange = { onToggle() })
                 }
         }
 }
