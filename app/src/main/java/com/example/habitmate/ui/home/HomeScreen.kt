@@ -105,7 +105,7 @@ enum class HabitMateDestination {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
+fun HabitMateHomeScreen(onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> }) {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
         var selectedHabit by remember { mutableStateOf<HabitUi?>(null) }
@@ -113,9 +113,7 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
         var startAnimation by rememberSaveable { mutableStateOf(false) }
         val sheetState = rememberModalBottomSheetState()
 
-        LaunchedEffect(Unit) {
-            startAnimation = true
-        }
+        LaunchedEffect(Unit) { startAnimation = true }
 
         // Logic tanggal - 7 hari ke belakang, 90 hari ke depan
         val dateItems = remember {
@@ -284,11 +282,11 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: () -> Unit = {}) {
                                 onClose = { showAddSheet = false },
                                 onCreateCustom = {
                                         showAddSheet = false
-                                        onNavigateToCreateHabit()
+                                        onNavigateToCreateHabit(null, null)
                                 },
                                 onTemplateSelect = { template ->
-                                        // TODO: Implement quick create from template
                                         showAddSheet = false
+                                        onNavigateToCreateHabit(template.title, template.emoji)
                                 }
                         )
                 }
@@ -577,7 +575,31 @@ fun TodayContent(
                 }
 
                 item {
-                        Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        val alpha by
+                                animateFloatAsState(
+                                        targetValue = if (startAnimation) 1f else 0f,
+                                        animationSpec =
+                                                tween(
+                                                        durationMillis = 500,
+                                                        delayMillis = 0
+                                                ), // No delay for first item
+                                        label = "cardAlpha"
+                                )
+                        val slideY by
+                                animateDpAsState(
+                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        animationSpec =
+                                                tween(durationMillis = 500, delayMillis = 0),
+                                        label = "cardSlide"
+                                )
+
+                        Box(
+                                modifier =
+                                        Modifier.padding(horizontal = 24.dp).graphicsLayer {
+                                                this.alpha = alpha
+                                                translationY = slideY.toPx()
+                                        }
+                        ) {
                                 GradientProgressCard(
                                         progress = progressToday,
                                         done = doneToday,
@@ -588,7 +610,36 @@ fun TodayContent(
                 }
 
                 item {
-                        FilterCapsuleRow(selected = selectedFilter, onSelected = onFilterSelected)
+                        val alpha by
+                                animateFloatAsState(
+                                        targetValue = if (startAnimation) 1f else 0f,
+                                        animationSpec =
+                                                tween(
+                                                        durationMillis = 500,
+                                                        delayMillis = 150
+                                                ), // Cascade delay
+                                        label = "filterAlpha"
+                                )
+                        val slideY by
+                                animateDpAsState(
+                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        animationSpec =
+                                                tween(durationMillis = 500, delayMillis = 150),
+                                        label = "filterSlide"
+                                )
+
+                        Box(
+                                modifier =
+                                        Modifier.graphicsLayer {
+                                                this.alpha = alpha
+                                                translationY = slideY.toPx()
+                                        }
+                        ) {
+                                FilterCapsuleRow(
+                                        selected = selectedFilter,
+                                        onSelected = onFilterSelected
+                                )
+                        }
                         Spacer(modifier = Modifier.height(20.dp))
                 }
 
@@ -934,26 +985,39 @@ fun LazyListScope.habitListGrouped(
         } else {
 
                 itemsIndexed(filteredHabits) { index, habit ->
-                        val alpha by animateFloatAsState(
-                            targetValue = if (startAnimation) 1f else 0f,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "alpha"
-                        )
-                        val slideY by animateDpAsState(
-                            targetValue = if (startAnimation) 0.dp else 50.dp,
-                            animationSpec = tween(durationMillis = 500, delayMillis = index * 100),
-                            label = "slideY"
-                        )
-                        
-                        Box(modifier = Modifier.graphicsLayer {
-                            this.alpha = alpha
-                            translationY = slideY.toPx()
-                        }) {
-                            HabitItem(
-                                    habit = habit,
-                                    onToggle = { onToggle(habit.id) },
-                                    onClick = { onHabitClick(habit) }
-                            )
+                        val alpha by
+                                animateFloatAsState(
+                                        targetValue = if (startAnimation) 1f else 0f,
+                                        animationSpec =
+                                                tween(
+                                                        durationMillis = 500,
+                                                        delayMillis = 300 + (index * 100)
+                                                ), // Cascade start after filters (300ms)
+                                        label = "alpha"
+                                )
+                        val slideY by
+                                animateDpAsState(
+                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        animationSpec =
+                                                tween(
+                                                        durationMillis = 500,
+                                                        delayMillis = 300 + (index * 100)
+                                                ),
+                                        label = "slideY"
+                                )
+
+                        Box(
+                                modifier =
+                                        Modifier.graphicsLayer {
+                                                this.alpha = alpha
+                                                translationY = slideY.toPx()
+                                        }
+                        ) {
+                                HabitItem(
+                                        habit = habit,
+                                        onToggle = { onToggle(habit.id) },
+                                        onClick = { onHabitClick(habit) }
+                                )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                 }

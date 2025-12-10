@@ -35,9 +35,15 @@ private val OceanGradient = Brush.linearGradient(colors = listOf(PrimaryColor, S
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateHabitScreen(onBack: () -> Unit, onSave: (HabitUi) -> Unit) {
-        var title by remember { mutableStateOf("") }
-        var selectedEmoji by remember { mutableStateOf("💧") }
+
+fun CreateHabitScreen(
+        onBack: () -> Unit,
+        onSave: (HabitUi) -> Unit,
+        initialTitle: String = "",
+        initialEmoji: String = "💧"
+) {
+        var title by remember { mutableStateOf(initialTitle) }
+        var selectedEmoji by remember { mutableStateOf(initialEmoji) }
         var selectedTime by remember { mutableStateOf(HabitTimeOfDay.ANYTIME) }
         var targetValue by remember { mutableStateOf("1") }
         var unitValue by remember { mutableStateOf("times") }
@@ -174,11 +180,11 @@ fun CreateHabitScreen(onBack: () -> Unit, onSave: (HabitUi) -> Unit) {
                                 color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
+                        BoxWithConstraints(
                                 modifier =
                                         Modifier.fillMaxWidth()
-                                                .height(56.dp) // Slightly taller for pill look
-                                                .clip(RoundedCornerShape(50)) // Pill Shape
+                                                .height(56.dp)
+                                                .clip(RoundedCornerShape(50))
                                                 .background(Color.White)
                                                 .border(
                                                         1.dp,
@@ -186,31 +192,86 @@ fun CreateHabitScreen(onBack: () -> Unit, onSave: (HabitUi) -> Unit) {
                                                         RoundedCornerShape(50)
                                                 )
                         ) {
-                                listOf("Daily", "Weekly").forEach { item ->
-                                        val isSelected = frequency == item
-                                        Box(
-                                                modifier =
-                                                        Modifier.weight(1f)
-                                                                .fillMaxHeight()
-                                                                .padding(4.dp)
-                                                                .clip(RoundedCornerShape(50))
-                                                                .background(
-                                                                        if (isSelected) PrimaryColor
-                                                                        else Color.Transparent
+                                val width = maxWidth
+                                val tabWidth = width / 2
+
+                                val indicatorOffset by
+                                        androidx.compose.animation.core.animateDpAsState(
+                                                targetValue =
+                                                        if (frequency == "Daily") 0.dp
+                                                        else tabWidth,
+                                                animationSpec =
+                                                        androidx.compose.animation.core.spring(
+                                                                stiffness =
+                                                                        androidx.compose.animation
+                                                                                .core.Spring
+                                                                                .StiffnessMediumLow
+                                                        ),
+                                                label = "indicator"
+                                        )
+
+                                // Animated Sliding Pill
+                                Box(
+                                        modifier =
+                                                Modifier.padding(4.dp)
+                                                        .width(tabWidth - 8.dp)
+                                                        .fillMaxHeight()
+                                                        .offset(x = indicatorOffset)
+                                                        .clip(RoundedCornerShape(50))
+                                                        .background(PrimaryColor)
+                                )
+
+                                // Text Items
+                                Row(modifier = Modifier.fillMaxSize()) {
+                                        listOf("Daily", "Weekly").forEach { item ->
+                                                val isSelected = frequency == item
+                                                val textColor by
+                                                        androidx.compose.animation
+                                                                .animateColorAsState(
+                                                                        targetValue =
+                                                                                if (isSelected)
+                                                                                        Color.White
+                                                                                else TextSecondary,
+                                                                        animationSpec =
+                                                                                androidx.compose
+                                                                                        .animation
+                                                                                        .core.tween(
+                                                                                        durationMillis =
+                                                                                                300
+                                                                                ),
+                                                                        label = "textColor"
                                                                 )
-                                                                .clickable { frequency = item },
-                                                contentAlignment = Alignment.Center
-                                        ) {
-                                                Text(
-                                                        text = item,
-                                                        color =
-                                                                if (isSelected) Color.White
-                                                                else TextSecondary,
-                                                        fontWeight =
-                                                                if (isSelected) FontWeight.Bold
-                                                                else FontWeight.Medium,
-                                                        fontSize = 16.sp
-                                                )
+                                                val fontWeight =
+                                                        if (isSelected) FontWeight.Bold
+                                                        else FontWeight.Medium
+
+                                                Box(
+                                                        modifier =
+                                                                Modifier.weight(1f)
+                                                                        .fillMaxHeight()
+                                                                        .clickable(
+                                                                                interactionSource =
+                                                                                        remember {
+                                                                                                androidx.compose
+                                                                                                        .foundation
+                                                                                                        .interaction
+                                                                                                        .MutableInteractionSource()
+                                                                                        },
+                                                                                indication =
+                                                                                        null // Disable ripple for cleaner custom animation
+                                                                        ) { frequency = item },
+                                                        contentAlignment = Alignment.Center
+                                                ) {
+                                                        Text(
+                                                                text = item,
+                                                                color = textColor,
+                                                                fontWeight = fontWeight,
+                                                                fontSize = 16.sp,
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .bodyLarge
+                                                        )
+                                                }
                                         }
                                 }
                         }

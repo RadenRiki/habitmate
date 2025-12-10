@@ -39,31 +39,43 @@ class MainActivity : ComponentActivity() {
                             exitTransition = { fadeOut(animationSpec = tween(700)) }
                     ) {
                         HabitMateHomeScreen(
-                                onNavigateToCreateHabit = { navController.navigate("create_habit") }
+                                onNavigateToCreateHabit = { title, emoji ->
+                                    val route =
+                                            if (title != null && emoji != null) {
+                                                "create_habit?title=$title&emoji=$emoji"
+                                            } else {
+                                                "create_habit"
+                                            }
+                                    navController.navigate(route)
+                                }
                         )
                     }
                     composable(
-                            "create_habit",
+                            "create_habit?title={title}&emoji={emoji}",
                             enterTransition = {
                                 slideIntoContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Left,
-                                        animationSpec = tween(500)
+                                        AnimatedContentTransitionScope.SlideDirection.Up,
+                                        animationSpec = tween(400)
                                 )
                             },
                             exitTransition = {
                                 slideOutOfContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Right,
-                                        animationSpec = tween(500)
+                                        AnimatedContentTransitionScope.SlideDirection.Down,
+                                        animationSpec = tween(400)
                                 )
                             }
-                    ) {
+                    ) { backStackEntry ->
+                        val initialTitle = backStackEntry.arguments?.getString("title") ?: ""
+                        val initialEmoji = backStackEntry.arguments?.getString("emoji") ?: "💧"
+
                         CreateHabitScreen(
                                 onBack = { navController.popBackStack() },
                                 onSave = { newHabit ->
-                                    // TODO: Persist habit (ViewModel)
-                                    // For now just navigate back
+                                    // TODO: Save to ViewModel/Database
                                     navController.popBackStack()
-                                }
+                                },
+                                initialTitle = initialTitle,
+                                initialEmoji = initialEmoji
                         )
                     }
                 }
