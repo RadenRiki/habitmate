@@ -519,6 +519,16 @@ fun TodayContent(
         startAnimation: Boolean,
         viewModel: HomeViewModel // New param
 ) {
+        // FIX: Local state to trigger entry animation immediately on first launch
+        // even if the persistent 'startAnimation' flag is delayed.
+        var isContentVisible by remember { mutableStateOf(startAnimation) }
+
+        LaunchedEffect(Unit) {
+                if (!startAnimation) {
+                        isContentVisible = true
+                }
+        }
+
         LazyColumn(
                 modifier = modifier.background(BackgroundColor),
                 contentPadding = PaddingValues(bottom = 100.dp) // Space for FAB
@@ -537,7 +547,7 @@ fun TodayContent(
                 item {
                         val alpha by
                                 animateFloatAsState(
-                                        targetValue = if (startAnimation) 1f else 0f,
+                                        targetValue = if (isContentVisible) 1f else 0f,
                                         animationSpec =
                                                 tween(
                                                         durationMillis = 500,
@@ -547,7 +557,7 @@ fun TodayContent(
                                 )
                         val slideY by
                                 animateDpAsState(
-                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        targetValue = if (isContentVisible) 0.dp else 50.dp,
                                         animationSpec =
                                                 tween(durationMillis = 500, delayMillis = 0),
                                         label = "cardSlide"
@@ -572,7 +582,7 @@ fun TodayContent(
                 item {
                         val alpha by
                                 animateFloatAsState(
-                                        targetValue = if (startAnimation) 1f else 0f,
+                                        targetValue = if (isContentVisible) 1f else 0f,
                                         animationSpec =
                                                 tween(
                                                         durationMillis = 500,
@@ -582,7 +592,7 @@ fun TodayContent(
                                 )
                         val slideY by
                                 animateDpAsState(
-                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        targetValue = if (isContentVisible) 0.dp else 50.dp,
                                         animationSpec =
                                                 tween(durationMillis = 500, delayMillis = 150),
                                         label = "filterSlide"
