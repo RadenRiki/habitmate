@@ -1,4 +1,4 @@
-package com.example.habitmate.ui.home
+package com.example.habitmate.ui.home.backup
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState

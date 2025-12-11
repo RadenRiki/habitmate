@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -31,8 +32,14 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -64,6 +72,9 @@ private val NavIconInactive = Color(0xFF64748B) // Slate-500 for unselected icon
 
 // Gradient untuk kartu progress - Ocean Blue Theme
 private val PrimaryGradient =
+        Brush.linearGradient(colors = listOf(Color(0xFF2563EB), Color(0xFF06B6D4)))
+
+private val OceanGradient =
         Brush.linearGradient(colors = listOf(Color(0xFF2563EB), Color(0xFF06B6D4)))
 
 // ---------- MODELS ----------
@@ -91,7 +102,9 @@ data class HabitUi(
         val current: Int,
         val target: Int,
         val isDoneToday: Boolean,
-        val streak: Int = 0 // Menambahkan streak dummy
+        val streak: Int = 0, // Menambahkan streak dummy
+        val selectedDays: List<Boolean> = List(7) { true },
+        val weeklyTarget: Int = 0 // 0 means specific days, >0 means times per week
 )
 
 enum class HabitMateDestination {
@@ -105,15 +118,26 @@ enum class HabitMateDestination {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitMateHomeScreen(onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> }) {
+fun HabitMateHomeScreen(
+        onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> },
+        viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
+) {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
         var selectedHabit by remember { mutableStateOf<HabitUi?>(null) }
         var showAddSheet by remember { mutableStateOf(false) }
-        var startAnimation by rememberSaveable { mutableStateOf(false) }
         val sheetState = rememberModalBottomSheetState()
+        val habits by viewModel.uiState.collectAsState()
 
-        LaunchedEffect(Unit) { startAnimation = true }
+        val hasAnimated by viewModel.hasAnimated.collectAsState()
+
+        // Trigger animation ONCE on first launch
+        LaunchedEffect(Unit) {
+                if (!hasAnimated) {
+                        kotlinx.coroutines.delay(1500) // Wait for data load & anim
+                        viewModel.setAnimated()
+                }
+        }
 
         // Logic tanggal - 7 hari ke belakang, 90 hari ke depan
         val dateItems = remember {
@@ -131,67 +155,6 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: (String?, String?) -> Unit = { 
 
         // Coroutine scope for animated scrolling
         val coroutineScope = rememberCoroutineScope()
-
-        // Dummy habits dengan Emoji
-        val habits = remember {
-                mutableStateListOf(
-                        HabitUi(
-                                1,
-                                "Drink Water",
-                                "💧",
-                                HabitTimeOfDay.ANYTIME,
-                                "cups",
-                                3,
-                                8,
-                                false,
-                                5
-                        ),
-                        HabitUi(
-                                2,
-                                "Code Project",
-                                "💻",
-                                HabitTimeOfDay.MORNING,
-                                "modules",
-                                0,
-                                1,
-                                false,
-                                12
-                        ),
-                        HabitUi(
-                                3,
-                                "Evening Run",
-                                "🏃",
-                                HabitTimeOfDay.EVENING,
-                                "mins",
-                                20,
-                                30,
-                                false,
-                                3
-                        ),
-                        HabitUi(
-                                4,
-                                "Meditation",
-                                "🧘",
-                                HabitTimeOfDay.MORNING,
-                                "mins",
-                                15,
-                                15,
-                                true,
-                                21
-                        ),
-                        HabitUi(
-                                5,
-                                "Read Book",
-                                "📚",
-                                HabitTimeOfDay.EVENING,
-                                "pages",
-                                0,
-                                20,
-                                false,
-                                0
-                        )
-                )
-        }
 
         val totalHabitsToday = habits.size
         val doneToday = habits.count { it.isDoneToday }
@@ -255,17 +218,19 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: (String?, String?) -> Unit = { 
                                         doneToday = doneToday,
                                         totalHabitsToday = totalHabitsToday,
                                         onToggleHabit = { habitId ->
-                                                // Simple toggle logic for UI demo
-                                                val index = habits.indexOfFirst { it.id == habitId }
-                                                if (index != -1) {
-                                                        val h = habits[index]
-                                                        habits[index] =
-                                                                h.copy(isDoneToday = !h.isDoneToday)
-                                                }
+                                                viewModel.toggleHabit(habitId)
                                         },
+                                        onResetHabit = { habitId -> viewModel.resetHabit(habitId) },
                                         dateStripListState = dateStripListState,
                                         onHabitClick = { selectedHabit = it },
-                                        startAnimation = startAnimation
+                                        startAnimation = hasAnimated,
+                                        viewModel = viewModel
+                                )
+                        }
+                        HabitMateDestination.HABITS -> {
+                                com.example.habitmate.ui.habits.HabitsManagerScreen(
+                                        viewModel = viewModel,
+                                        modifier = Modifier.padding(innerPadding)
                                 )
                         }
                         else -> PlaceholderScreen(modifier = Modifier.padding(innerPadding))
@@ -310,14 +275,7 @@ fun HabitMateHomeScreen(onNavigateToCreateHabit: (String?, String?) -> Unit = { 
                                 },
                                 onEdit = { /* TODO: Edit */},
                                 onDelete = { /* TODO: Delete */},
-                                onToggleCompletion = { id ->
-                                        // Reuse toggle logic from parent
-                                        val index = habits.indexOfFirst { it.id == id }
-                                        if (index != -1) {
-                                                val h = habits[index]
-                                                habits[index] = h.copy(isDoneToday = !h.isDoneToday)
-                                        }
-                                }
+                                onToggleCompletion = { id -> viewModel.toggleHabit(id) }
                         )
                 }
         }
@@ -555,9 +513,11 @@ fun TodayContent(
         doneToday: Int,
         totalHabitsToday: Int,
         onToggleHabit: (Int) -> Unit,
+        onResetHabit: (Int) -> Unit,
         dateStripListState: androidx.compose.foundation.lazy.LazyListState, // Added parameter
         onHabitClick: (HabitUi) -> Unit,
-        startAnimation: Boolean
+        startAnimation: Boolean,
+        viewModel: HomeViewModel // New param
 ) {
         LazyColumn(
                 modifier = modifier.background(BackgroundColor),
@@ -643,10 +603,11 @@ fun TodayContent(
                         Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                habitListGrouped(
+                HabitList(
                         habits = habits,
                         filter = selectedFilter,
                         onToggle = onToggleHabit,
+                        onReset = onResetHabit,
                         onHabitClick = onHabitClick,
                         startAnimation = startAnimation
                 )
@@ -952,56 +913,89 @@ fun FilterCapsuleRow(selected: HabitTimeFilter, onSelected: (HabitTimeFilter) ->
 
 // ---------- COMPONENT: HABIT LIST ----------
 
-fun LazyListScope.habitListGrouped(
+fun LazyListScope.HabitList(
         habits: List<HabitUi>,
         filter: HabitTimeFilter,
         onToggle: (Int) -> Unit,
+        onReset: (Int) -> Unit,
         onHabitClick: (HabitUi) -> Unit,
         startAnimation: Boolean
 ) {
         val filteredHabits =
-                if (filter == HabitTimeFilter.ALL_DAY) {
-                        habits
-                } else {
-                        habits.filter {
-                                it.timeOfDay.name == filter.name ||
-                                        it.timeOfDay == HabitTimeOfDay.ANYTIME
-                        }
+                habits.filter {
+                        if (filter == HabitTimeFilter.ALL_DAY) true
+                        else
+                                when (filter) {
+                                        HabitTimeFilter.MORNING ->
+                                                it.timeOfDay == HabitTimeOfDay.MORNING
+                                        HabitTimeFilter.AFTERNOON ->
+                                                it.timeOfDay == HabitTimeOfDay.AFTERNOON
+                                        HabitTimeFilter.EVENING ->
+                                                it.timeOfDay == HabitTimeOfDay.EVENING
+                                        else -> true
+                                }
                 }
 
         if (filteredHabits.isEmpty()) {
                 item {
                         Box(
-                                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
                                 contentAlignment = Alignment.Center
                         ) {
                                 Text(
-                                        "No habits found",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        "No habits for this time",
+                                        style = MaterialTheme.typography.bodyLarge,
                                         color = TextSecondary
                                 )
                         }
                 }
         } else {
+                itemsIndexed(filteredHabits, key = { _, habit -> habit.id }) { index, habit ->
+                        // If app just started (startAnimation was false initially, now
+                        // transitioning), play animation.
+                        // If App has already animated (startAnimation=true from VM), show
+                        // immediately (alpha=1f).
+                        // BUT, we want animation ONLY if it *wasn't* animated before.
+                        // The VM state starts as false.
+                        // So we want: target = 1f. Initial = 0f if !hasAnimated.
+                        // Actually, we can use a local state that defaults to
+                        // `startAnimation` (which is hasAnimated).
 
-                itemsIndexed(filteredHabits) { index, habit ->
+                        // FIX: Initialize based on startAnimation (true = already animated, show
+                        // immediately)
+                        var isVisible by remember { mutableStateOf(startAnimation) }
+
+                        // FIX: Always trigger animation sequence
+                        LaunchedEffect(Unit) {
+                                if (!startAnimation) {
+                                        kotlinx.coroutines.delay(
+                                                300L + (index * 100L)
+                                        ) // Wait for Card & Filter
+                                        isVisible = true
+                                }
+                        }
+
                         val alpha by
                                 animateFloatAsState(
-                                        targetValue = if (startAnimation) 1f else 0f,
+                                        targetValue = if (isVisible) 1f else 0f,
                                         animationSpec =
                                                 tween(
                                                         durationMillis = 500,
-                                                        delayMillis = 300 + (index * 100)
-                                                ), // Cascade start after filters (300ms)
+                                                        easing =
+                                                                androidx.compose.animation.core
+                                                                        .FastOutSlowInEasing
+                                                ),
                                         label = "alpha"
                                 )
                         val slideY by
                                 animateDpAsState(
-                                        targetValue = if (startAnimation) 0.dp else 50.dp,
+                                        targetValue = if (isVisible) 0.dp else 50.dp,
                                         animationSpec =
                                                 tween(
                                                         durationMillis = 500,
-                                                        delayMillis = 300 + (index * 100)
+                                                        easing =
+                                                                androidx.compose.animation.core
+                                                                        .FastOutSlowInEasing
                                                 ),
                                         label = "slideY"
                                 )
@@ -1009,68 +1003,229 @@ fun LazyListScope.habitListGrouped(
                         Box(
                                 modifier =
                                         Modifier.graphicsLayer {
-                                                this.alpha = alpha
-                                                translationY = slideY.toPx()
-                                        }
+                                                        this.alpha = alpha
+                                                        translationY = slideY.toPx()
+                                                }
+                                                .padding(
+                                                        bottom = 16.dp
+                                                ) // FIX: Add spacing to prevent collision
                         ) {
-                                HabitItem(
+                                OceanHabitCard(
                                         habit = habit,
                                         onToggle = { onToggle(habit.id) },
+                                        onReset = { onReset(habit.id) },
                                         onClick = { onHabitClick(habit) }
                                 )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
                 }
         }
 }
 
+// ---------- COMPONENT: OCEAN HABIT CARD (Redesign) ----------
+
 @Composable
-fun HabitItem(habit: HabitUi, onToggle: () -> Unit, onClick: () -> Unit) {
-        Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
-                elevation = CardDefaults.cardElevation(2.dp),
+fun OceanHabitCard(habit: HabitUi, onToggle: () -> Unit, onReset: () -> Unit, onClick: () -> Unit) {
+        Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = CardSurface,
+                shadowElevation = 8.dp, // Softer shadow
+                tonalElevation = 2.dp,
                 modifier =
                         Modifier.fillMaxWidth().padding(horizontal = 24.dp).clickable { onClick() }
         ) {
-                Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Subtle Gradient Background Overlay
+                Box(
+                        modifier =
+                                Modifier.background(
+                                        Brush.linearGradient(
+                                                colors =
+                                                        listOf(
+                                                                Color.White,
+                                                                Color(
+                                                                        0xFFF0F9FF
+                                                                ) // Very light blue tint
+                                                        )
+                                        )
+                                )
                 ) {
+                        Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                // Vibrant Icon Container
+                                Box(
+                                        modifier =
+                                                Modifier.size(56.dp)
+                                                        .clip(RoundedCornerShape(16.dp))
+                                                        .background(OceanGradient),
+                                        contentAlignment = Alignment.Center
+                                ) {
+                                        Text(
+                                                text = habit.emoji,
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                modifier = Modifier.padding(bottom = 2.dp)
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                text = habit.title,
+                                                style =
+                                                        MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = TextPrimary
+                                                        )
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                                text =
+                                                        "${habit.current}/${habit.target} ${habit.unitLabel}",
+                                                style =
+                                                        MaterialTheme.typography.labelMedium.copy(
+                                                                fontWeight = FontWeight.Medium,
+                                                                color = TextSecondary
+                                                        )
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // Circular Progress Integration
+                                CircularProgressButton(
+                                        current = habit.current,
+                                        target = habit.target,
+                                        isDone = habit.isDoneToday,
+                                        onIncrement = onToggle,
+                                        onReset = onReset
+                                )
+                        }
+                }
+        }
+}
+
+// ---------- COMPONENT: CIRCULAR PROGRESS BUTTON (Smart Interaction) ----------
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun CircularProgressButton(
+        current: Int,
+        target: Int,
+        isDone: Boolean,
+        onIncrement: () -> Unit,
+        onReset: () -> Unit
+) {
+        val progress = if (target > 0) current.toFloat() / target else 0f
+
+        // Animation States
+        val animatedProgress by
+                animateFloatAsState(
+                        targetValue = progress,
+                        animationSpec =
+                                androidx.compose.animation.core.spring(
+                                        stiffness =
+                                                androidx.compose.animation.core.Spring.StiffnessLow
+                                ),
+                        label = "progress"
+                )
+
+        // Scale animation on press is handled by clickable interactions usually,
+        // but here we just animate the checkmark/ring transition.
+
+        Box(
+                modifier =
+                        Modifier.size(48.dp)
+                                .clip(CircleShape)
+                                // Combined Clickable & Long Clickable
+                                .combinedClickable(onClick = onIncrement, onLongClick = onReset),
+                contentAlignment = Alignment.Center
+        ) {
+                if (isDone) {
+                        // Completed State: Filled Gradient Circle with Checkmark
                         Box(
-                                modifier =
-                                        Modifier.size(48.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(Color.Gray.copy(alpha = 0.1f)),
+                                modifier = Modifier.fillMaxSize().background(OceanGradient),
                                 contentAlignment = Alignment.Center
                         ) {
-                                Text(
-                                        text = habit.emoji,
-                                        style = MaterialTheme.typography.headlineSmall
-                                )
+
+                                // Or draw a checkmark manually for cleaner look
+                                Canvas(modifier = Modifier.size(16.dp)) {
+                                        val path =
+                                                androidx.compose.ui.graphics.Path().apply {
+                                                        moveTo(0f, size.height * 0.5f)
+                                                        lineTo(
+                                                                size.width * 0.4f,
+                                                                size.height * 0.9f
+                                                        )
+                                                        lineTo(size.width, size.height * 0.2f)
+                                                }
+                                        drawPath(
+                                                path = path,
+                                                color = Color.White,
+                                                style =
+                                                        androidx.compose.ui.graphics.drawscope
+                                                                .Stroke(
+                                                                        width = 5f,
+                                                                        cap =
+                                                                                androidx.compose.ui
+                                                                                        .graphics
+                                                                                        .StrokeCap
+                                                                                        .Round,
+                                                                        join =
+                                                                                androidx.compose.ui
+                                                                                        .graphics
+                                                                                        .StrokeJoin
+                                                                                        .Round
+                                                                )
+                                        )
+                                }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                        habit.title,
+                } else {
+                        // In-Progress State: Ring
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                // Background Track
+                                drawCircle(
+                                        color = Color.LightGray.copy(alpha = 0.3f),
                                         style =
-                                                MaterialTheme.typography.titleMedium.copy(
-                                                        fontWeight = FontWeight.Bold
+                                                androidx.compose.ui.graphics.drawscope.Stroke(
+                                                        width = 8f
                                                 )
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                        "${habit.current}/${habit.target} ${habit.unitLabel}",
+
+                                // Progress Arc
+                                drawArc(
+                                        brush = OceanGradient,
+                                        startAngle = -90f,
+                                        sweepAngle = 360 * animatedProgress,
+                                        useCenter = false,
                                         style =
-                                                MaterialTheme.typography.bodySmall.copy(
-                                                        color = TextSecondary
+                                                androidx.compose.ui.graphics.drawscope.Stroke(
+                                                        width = 8f,
+                                                        cap =
+                                                                androidx.compose.ui.graphics
+                                                                        .StrokeCap.Round
                                                 )
                                 )
                         }
-                        AnimatedOceanCheckbox(
-                                checked = habit.isDoneToday,
-                                onCheckedChange = { onToggle() }
+
+                        // Text Indicator for steps (Optional, maybe too small? Let's just keep
+                        // clean ring)
+                        /*
+                        Text(
+                            text = "${current}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = TextSecondary
                         )
+                        */
+                        // Plus icon in center to encourage tapping?
+                        if (current == 0) {
+                                Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Start",
+                                        tint = SecondaryColor,
+                                        modifier = Modifier.size(20.dp)
+                                )
+                        }
                 }
         }
 }

@@ -8,11 +8,13 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.habitmate.ui.home.CreateHabitScreen
 import com.example.habitmate.ui.home.HabitMateHomeScreen
+import com.example.habitmate.ui.home.HomeViewModel
 import com.example.habitmate.ui.splash.SplashScreen
 import com.example.habitmate.ui.theme.HabitmateTheme
 
@@ -23,6 +25,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             HabitmateTheme {
                 val navController = rememberNavController()
+                val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
+
                 NavHost(navController = navController, startDestination = "splash") {
                     composable("splash") {
                         SplashScreen(
@@ -47,7 +51,8 @@ class MainActivity : ComponentActivity() {
                                                 "create_habit"
                                             }
                                     navController.navigate(route)
-                                }
+                                },
+                                viewModel = viewModel
                         )
                     }
                     composable(
@@ -71,7 +76,15 @@ class MainActivity : ComponentActivity() {
                         CreateHabitScreen(
                                 onBack = { navController.popBackStack() },
                                 onSave = { newHabit ->
-                                    // TODO: Save to ViewModel/Database
+                                    viewModel.addHabit(
+                                            title = newHabit.title,
+                                            emoji = newHabit.emoji,
+                                            target = newHabit.target,
+                                            unit = newHabit.unitLabel,
+                                            timeOfDay = newHabit.timeOfDay,
+                                            selectedDays = newHabit.selectedDays,
+                                            weeklyTarget = newHabit.weeklyTarget
+                                    )
                                     navController.popBackStack()
                                 },
                                 initialTitle = initialTitle,

@@ -35,7 +35,6 @@ private val OceanGradient = Brush.linearGradient(colors = listOf(PrimaryColor, S
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-
 fun CreateHabitScreen(
         onBack: () -> Unit,
         onSave: (HabitUi) -> Unit,
@@ -335,7 +334,7 @@ fun CreateHabitScreen(
                                         }
                                 }
                         } else {
-                                // Weekly Count
+                                // Weekly Count (Flexible)
                                 Row(
                                         modifier =
                                                 Modifier.fillMaxWidth()
@@ -577,16 +576,29 @@ fun CreateHabitScreen(
                         // Create Button
                         Button(
                                 onClick = {
+                                        val finalSelectedDays =
+                                                if (frequency == "Daily") selectedDays.toList()
+                                                else
+                                                        List(7) {
+                                                                true
+                                                        } // Default to all if Weekly (flexible)
+
+                                        val finalWeeklyTarget =
+                                                if (frequency == "Weekly") daysPerWeek else 0
+
                                         val newHabit =
                                                 HabitUi(
-                                                        id = (10..1000).random(), // Mock ID
+                                                        id = 0,
                                                         title = title.ifEmpty { "New Habit" },
                                                         emoji = selectedEmoji,
                                                         timeOfDay = selectedTime,
                                                         unitLabel = unitValue,
                                                         current = 0,
                                                         target = targetValue.toIntOrNull() ?: 1,
-                                                        isDoneToday = false
+                                                        isDoneToday = false,
+                                                        streak = 0,
+                                                        selectedDays = finalSelectedDays,
+                                                        weeklyTarget = finalWeeklyTarget
                                                 )
                                         onSave(newHabit)
                                 },
