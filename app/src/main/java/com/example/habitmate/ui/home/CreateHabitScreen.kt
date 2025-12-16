@@ -7,9 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -39,25 +41,45 @@ fun CreateHabitScreen(
         onBack: () -> Unit,
         onSave: (HabitUi) -> Unit,
         initialTitle: String = "",
-        initialEmoji: String = "💧"
+        initialEmoji: String = "",
+        habitToEdit: HabitUi? = null
 ) {
-        var title by remember { mutableStateOf(initialTitle) }
-        var selectedEmoji by remember { mutableStateOf(initialEmoji) }
-        var selectedTime by remember { mutableStateOf(HabitTimeOfDay.ANYTIME) }
-        var targetValue by remember { mutableStateOf("1") }
-        var unitValue by remember { mutableStateOf("times") }
-        var frequency by remember { mutableStateOf("Daily") } // Daily vs Weekly
-        // Frequency Logic
-        val weekDays = listOf("S", "M", "T", "W", "T", "F", "S")
-        val selectedDays = remember { mutableStateListOf(true, true, true, true, true, true, true) }
-        var daysPerWeek by remember { mutableStateOf(3) }
+        var title by remember { mutableStateOf(initialTitle.ifEmpty { habitToEdit?.title ?: "" }) }
+        var selectedEmoji by remember {
+                mutableStateOf(initialEmoji.ifEmpty { habitToEdit?.emoji ?: "💧" })
+        }
 
+        // Initialize States from habitToEdit if available
+        var frequency by remember {
+                mutableStateOf(if (habitToEdit?.weeklyTarget ?: 0 > 0) "Weekly" else "Daily")
+        }
+        var selectedDays = remember {
+                mutableStateListOf<Boolean>().apply {
+                        addAll(habitToEdit?.selectedDays ?: List(7) { true })
+                }
+        }
+        var daysPerWeek by remember { mutableStateOf(habitToEdit?.weeklyTarget ?: 3) }
+        var targetValue by remember { mutableStateOf(habitToEdit?.target?.toString() ?: "1") }
+        var unitValue by remember { mutableStateOf(habitToEdit?.unitLabel ?: "times") }
+        var selectedTime by remember {
+                mutableStateOf(habitToEdit?.timeOfDay ?: HabitTimeOfDay.ANYTIME)
+        }
+
+        var showEmojiPicker by remember { mutableStateOf(false) }
+
+        val weekDays = listOf("S", "M", "T", "W", "T", "F", "S")
         val emojis = listOf("💧", "🏃", "📚", "🧘", "😴", "💻", "🍎", "💊", "🎸", "🎨")
 
         Scaffold(
                 topBar = {
                         TopAppBar(
-                                title = { Text("Create Habit", fontWeight = FontWeight.Bold) },
+                                title = {
+                                        Text(
+                                                if (habitToEdit != null) "Edit Habit"
+                                                else "Create Habit",
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                },
                                 navigationIcon = {
                                         IconButton(onClick = onBack) {
                                                 Icon(
@@ -74,7 +96,13 @@ fun CreateHabitScreen(
                 },
                 containerColor = BackgroundColor
         ) { padding ->
-                Column(modifier = Modifier.padding(padding).fillMaxSize().padding(24.dp)) {
+                Column(
+                        modifier =
+                                Modifier.padding(padding)
+                                        .fillMaxSize()
+                                        .padding(horizontal = 24.dp)
+                                        .verticalScroll(rememberScrollState())
+                ) {
 
                         // 1. Name & Icon Input
                         Text(
@@ -573,22 +601,24 @@ fun CreateHabitScreen(
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Create Button
+                        // Create/Update Button
                         Button(
                                 onClick = {
                                         val finalSelectedDays =
-                                                if (frequency == "Daily") selectedDays.toList()
-                                                else
-                                                        List(7) {
-                                                                true
-                                                        } // Default to all if Weekly (flexible)
+                                                if (frequency == "Daily") {
+                                                        selectedDays.toList()
+                                                } else {
+                                                        List(7) { true } // Default to all if Weekly
+                                                }
 
                                         val finalWeeklyTarget =
                                                 if (frequency == "Weekly") daysPerWeek else 0
 
                                         val newHabit =
                                                 HabitUi(
-                                                        id = 0,
+                                                        id = 0, // Ignored by onSave logic for
+                                                        // updates, but needed for data
+                                                        // class
                                                         title = title.ifEmpty { "New Habit" },
                                                         emoji = selectedEmoji,
                                                         timeOfDay = selectedTime,
@@ -602,12 +632,16 @@ fun CreateHabitScreen(
                                                 )
                                         onSave(newHabit)
                                 },
-                                modifier =
-                                        Modifier.fillMaxWidth()
-                                                .height(56.dp)
-                                                .clip(RoundedCornerShape(16.dp)),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-                        ) { Text("Create Habit", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                        ) {
+                                Text(
+                                        if (habitToEdit != null) "Update Habit" else "Create Habit",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                )
+                        }
                 }
         }
 }

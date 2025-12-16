@@ -1,16 +1,21 @@
 package com.example.habitmate.ui.habits
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,9 +30,21 @@ import androidx.compose.ui.unit.sp
 import com.example.habitmate.ui.home.HabitUi
 import com.example.habitmate.ui.home.HomeViewModel
 
+// Consistent Colors
+private val BackgroundColor = Color(0xFFF8FAFC) // Slate-50
+private val SurfaceColor = Color(0xFFFFFFFF)
+private val TextDark = Color(0xFF0F172A)
+private val TextSecondary = Color(0xFF64748B)
+private val PrimaryBlue = Color(0xFF2563EB)
+private val DangerRed = Color(0xFFEF4444)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitsManagerScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
+fun HabitsManagerScreen(
+        viewModel: HomeViewModel,
+        modifier: Modifier = Modifier,
+        onNavigateToEdit: (Int) -> Unit
+) {
     val allHabits by viewModel.allHabits.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -58,79 +75,107 @@ fun HabitsManagerScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier)
                                 showDeleteDialog = false
                                 Toast.makeText(context, "Habit deleted", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                            colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
                     ) { Text("Delete") }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
-                }
+                },
+                containerColor = SurfaceColor,
+                titleContentColor = TextDark,
+                textContentColor = TextSecondary
         )
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        // Search Bar
-        OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search habits...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-                },
-                shape = RoundedCornerShape(16.dp),
-                colors =
-                        OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF2563EB),
-                                unfocusedBorderColor = Color.Transparent
-                        )
+    Column(
+            modifier =
+                    modifier.fillMaxSize()
+                            .background(BackgroundColor)
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 24.dp)
+    ) {
+        // Header
+        Text(
+                text = "Manage Habits",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = TextDark
+        )
+        Text(
+                text = "Edit or remove your daily rituals",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Search Bar (Clean White)
+        OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search...", color = TextSecondary.copy(alpha = 0.5f)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = PrimaryBlue)
+                },
+                shape = RoundedCornerShape(16.dp),
+                colors =
+                        OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = SurfaceColor,
+                                unfocusedContainerColor = SurfaceColor,
+                                disabledContainerColor = SurfaceColor,
+                                focusedBorderColor = PrimaryBlue.copy(alpha = 0.3f),
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = PrimaryBlue,
+                        ),
+                singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // List Content
         if (filteredHabits.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                    modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                    contentAlignment = Alignment.Center
+            ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                            "No habits found",
+                            text =
+                                    if (searchQuery.isNotEmpty()) "No match found"
+                                    else "No habits yet",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                            "Create a new one from the Home screen!",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.LightGray
+                            fontWeight = FontWeight.Bold,
+                            color = TextSecondary
                     )
                 }
             }
         } else {
-            LazyVerticalStaggeredGrid(
-                    columns = StaggeredGridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalItemSpacing = 16.dp
+            LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(filteredHabits) { habit ->
-                    HabitManagerCard(
-                            habit = habit,
-                            onDeleteClick = {
-                                habitToDelete = habit
-                                showDeleteDialog = true
-                            },
-                            onCardClick = {
-                                Toast.makeText(
-                                                context,
-                                                "Edit feature coming soon! 🚧",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show()
-                            }
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(80.dp)) // Space for bottom bar
+                    val index = filteredHabits.indexOf(habit)
+                    var isVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(index * 50L) // Staggered entry
+                        isVisible = true
+                    }
+
+                    AnimatedVisibility(
+                            visible = isVisible,
+                            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
+                    ) {
+                        HabitListItem(
+                                habit = habit,
+                                onDeleteClick = {
+                                    habitToDelete = habit
+                                    showDeleteDialog = true
+                                },
+                                onEditClick = { onNavigateToEdit(habit.id) }
+                        )
+                    }
                 }
             }
         }
@@ -138,90 +183,66 @@ fun HabitsManagerScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier)
 }
 
 @Composable
-fun HabitManagerCard(habit: HabitUi, onDeleteClick: () -> Unit, onCardClick: () -> Unit) {
-    Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth().clickable { onCardClick() }
+fun HabitListItem(habit: HabitUi, onDeleteClick: () -> Unit, onEditClick: () -> Unit) {
+    Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = SurfaceColor,
+            shadowElevation = 1.dp, // Subtle shadow for depth
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0)), // Very light gray border
+            modifier = Modifier.fillMaxWidth().clickable { onEditClick() }
     ) {
-        Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Big Emoji with background
+            // Icon Bubble
             Box(
                     modifier =
-                            Modifier.size(64.dp)
+                            Modifier.size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFEFF6FF)), // Light Blue bg
+                                    .background(Color(0xFFEFF6FF)), // Light blue bg
                     contentAlignment = Alignment.Center
-            ) { Text(habit.emoji, fontSize = 32.sp) }
+            ) { Text(habit.emoji, fontSize = 24.sp) }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Text Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                        text = habit.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark,
+                        maxLines = 1
+                )
 
-            // Title
-            Text(
-                    habit.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827),
-                    maxLines = 1
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Frequency Pill
-            val frequencyText = if (habit.selectedDays.all { it }) "Everyday" else "Custom Days"
-            Surface(
-                    color =
-                            if (habit.selectedDays.all { it }) Color(0xFFDCFCE7)
-                            else Color(0xFFF3E8FF),
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier.height(24.dp)
-            ) {
-                Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                ) {
-                    Text(
-                            frequencyText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color =
-                                    if (habit.selectedDays.all { it }) Color(0xFF166534)
-                                    else Color(0xFF6B21A8),
-                            fontWeight = FontWeight.Bold
-                    )
-                }
+                // Frequency + Streak
+                val frequencyText = if (habit.selectedDays.all { it }) "Everyday" else "Custom"
+                Text(
+                        text = "$frequencyText • ${habit.streak} day streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Stats Row (Mockup for visual richness)
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text("Streak", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(
-                            "${habit.streak} 🔥",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
+            // Actions Row
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Edit Button
+                IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(20.dp)
                     )
                 }
 
                 // Delete Button
-                IconButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier.size(36.dp).background(Color(0xFFFEE2E2), CircleShape)
-                ) {
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
                     Icon(
                             Icons.Default.Delete,
                             contentDescription = "Delete",
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(18.dp)
+                            tint = DangerRed.copy(alpha = 0.8f),
+                            modifier = Modifier.size(20.dp)
                     )
                 }
             }

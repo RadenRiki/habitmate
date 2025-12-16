@@ -8,10 +8,13 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.habitmate.ui.habits.HabitsManagerScreen
 import com.example.habitmate.ui.home.CreateHabitScreen
 import com.example.habitmate.ui.home.HabitMateHomeScreen
 import com.example.habitmate.ui.home.HomeViewModel
@@ -52,11 +55,41 @@ class MainActivity : ComponentActivity() {
                                             }
                                     navController.navigate(route)
                                 },
+                                onNavigateToHabitsManager = {
+                                    navController.navigate("habits_manager")
+                                },
+                                onNavigateToEdit = { habitId ->
+                                    navController.navigate("create_habit?habitId=$habitId")
+                                },
                                 viewModel = viewModel
                         )
                     }
+
                     composable(
-                            "create_habit?title={title}&emoji={emoji}",
+                            "habits_manager",
+                            enterTransition = {
+                                slideIntoContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Left,
+                                        tween(400)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Right,
+                                        tween(400)
+                                )
+                            }
+                    ) {
+                        HabitsManagerScreen(
+                                viewModel = viewModel,
+                                onNavigateToEdit = { habitId ->
+                                    navController.navigate("create_habit?habitId=$habitId")
+                                }
+                        )
+                    }
+
+                    composable(
+                            "create_habit?habitId={habitId}&title={title}&emoji={emoji}",
                             enterTransition = {
                                 slideIntoContainer(
                                         AnimatedContentTransitionScope.SlideDirection.Up,
@@ -70,25 +103,44 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                     ) { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId")?.toIntOrNull()
                         val initialTitle = backStackEntry.arguments?.getString("title") ?: ""
                         val initialEmoji = backStackEntry.arguments?.getString("emoji") ?: "💧"
+
+                        // If finding existing habit for edit
+                        val allHabits = viewModel.allHabits.collectAsState().value
+                        val habitToEdit = allHabits.find { it.id == habitId }
 
                         CreateHabitScreen(
                                 onBack = { navController.popBackStack() },
                                 onSave = { newHabit ->
-                                    viewModel.addHabit(
-                                            title = newHabit.title,
-                                            emoji = newHabit.emoji,
-                                            target = newHabit.target,
-                                            unit = newHabit.unitLabel,
-                                            timeOfDay = newHabit.timeOfDay,
-                                            selectedDays = newHabit.selectedDays,
-                                            weeklyTarget = newHabit.weeklyTarget
-                                    )
+                                    if (habitToEdit != null) {
+                                        // UPDATE
+                                        viewModel.updateHabit(
+                                                newHabit.copy(
+                                                        id = habitToEdit.id,
+                                                        streak = habitToEdit.streak,
+                                                        current = habitToEdit.current,
+                                                        isDoneToday = habitToEdit.isDoneToday
+                                                )
+                                        )
+                                    } else {
+                                        // CREATE
+                                        viewModel.addHabit(
+                                                title = newHabit.title,
+                                                emoji = newHabit.emoji,
+                                                target = newHabit.target,
+                                                unit = newHabit.unitLabel,
+                                                timeOfDay = newHabit.timeOfDay,
+                                                selectedDays = newHabit.selectedDays,
+                                                weeklyTarget = newHabit.weeklyTarget
+                                        )
+                                    }
                                     navController.popBackStack()
                                 },
-                                initialTitle = initialTitle,
-                                initialEmoji = initialEmoji
+                                initialTitle = habitToEdit?.title ?: initialTitle,
+                                initialEmoji = habitToEdit?.emoji ?: initialEmoji,
+                                habitToEdit = habitToEdit
                         )
                     }
                 }

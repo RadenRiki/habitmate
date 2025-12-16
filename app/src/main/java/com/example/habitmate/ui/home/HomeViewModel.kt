@@ -12,6 +12,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -44,6 +45,14 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                             initialValue = emptyList()
                     )
 
+    // 2. Selected Date State
+    private val _selectedDate = kotlinx.coroutines.flow.MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    fun updateSelectedDate(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
     // 3. Animation State (Single Event)
     private val _hasAnimated = kotlinx.coroutines.flow.MutableStateFlow(false)
     val hasAnimated: StateFlow<Boolean> = _hasAnimated.asStateFlow()
@@ -52,16 +61,13 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
         _hasAnimated.value = true
     }
 
-    // 2. Today's Habits (For Home Screen)
+    // 4. Filtered Habits (Based on Selected Date)
     val uiState: StateFlow<List<HabitUi>> =
-            allHabits
-                    .map { habits ->
-                        val todayDayOfWeek = LocalDate.now().dayOfWeek.value % 7 // 0=Sun, 1=Mon...
+            combine(allHabits, _selectedDate) { habits, date ->
+                        val dayOfWeek = date.dayOfWeek.value % 7 // 0=Sun, 1=Mon...
                         habits.filter {
                             // Show if specific day selected OR if it's a flexible weekly habit
-                            // (weeklyTarget > 0)
-                            // Flexible habits show every day for now (simplified logic)
-                            it.selectedDays[todayDayOfWeek] || it.weeklyTarget > 0
+                            it.selectedDays[dayOfWeek] || it.weeklyTarget > 0
                         }
                     }
                     .stateIn(
@@ -77,7 +83,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
             unit: String,
             timeOfDay: HabitTimeOfDay,
             selectedDays: List<Boolean>,
-            weeklyTarget: Int // New param
+            weeklyTarget: Int
     ) {
         viewModelScope.launch {
             repository.insertHabit(
@@ -90,6 +96,31 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                             selectedDays = selectedDays,
                             weeklyTarget = weeklyTarget
                     )
+            )
+        }
+    }
+
+    fun updateHabit(updatedHabit: HabitUi) {
+        viewModelScope.launch {
+            // Find original entity to preserve ID and other potential fields
+            // Since HabitUi has ID, we can create Entity directly with that ID
+            repository.updateHabit(
+                    HabitEntity(
+                            id = updatedHabit.id,
+                            title = updatedHabit.title,
+                            emoji = updatedHabit.emoji,
+                            target = updatedHabit.target,
+                            unitLabel = updatedHabit.unitLabel,
+                            timeOfDay = updatedHabit.timeOfDay,
+                            selectedDays = updatedHabit.selectedDays,
+                            weeklyTarget = updatedHabit.weeklyTarget,
+                            current = updatedHabit.current, // Maintain progress
+                            isDoneToday = updatedHabit.isDoneToday,
+                            streak = updatedHabit.streak
+                            // createdDate is auto-generated/ignored on update usually,
+                            // or we should fetch original.
+                            // Room @Update uses primary key (id) to match.
+                            )
             )
         }
     }

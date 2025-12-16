@@ -120,6 +120,8 @@ enum class HabitMateDestination {
 @Composable
 fun HabitMateHomeScreen(
         onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> },
+        onNavigateToHabitsManager: () -> Unit = {},
+        onNavigateToEdit: (Int) -> Unit = {},
         viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
         val today = remember { LocalDate.now() }
@@ -138,6 +140,9 @@ fun HabitMateHomeScreen(
                         viewModel.setAnimated()
                 }
         }
+
+        // Sync selected date with ViewModel filters
+        LaunchedEffect(selectedDate) { viewModel.updateSelectedDate(selectedDate) }
 
         // Logic tanggal - 7 hari ke belakang, 90 hari ke depan
         val dateItems = remember {
@@ -179,14 +184,15 @@ fun HabitMateHomeScreen(
                 floatingActionButton = {
                         if (currentDestination == HabitMateDestination.HOME) {
                                 FloatingActionButton(
-                                        onClick = { showAddSheet = true },
+                                        onClick = { onNavigateToCreateHabit(null, null) },
                                         containerColor = PrimaryColor,
-                                        shape = RoundedCornerShape(16.dp),
-                                        elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                                        contentColor = Color.White,
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(64.dp)
                                 ) {
                                         Icon(
-                                                Icons.Default.Add,
-                                                contentDescription = "Add",
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Add Habit",
                                                 tint = Color.White
                                         )
                                 }
@@ -230,7 +236,8 @@ fun HabitMateHomeScreen(
                         HabitMateDestination.HABITS -> {
                                 com.example.habitmate.ui.habits.HabitsManagerScreen(
                                         viewModel = viewModel,
-                                        modifier = Modifier.padding(innerPadding)
+                                        modifier = Modifier.padding(innerPadding),
+                                        onNavigateToEdit = onNavigateToEdit
                                 )
                         }
                         else -> PlaceholderScreen(modifier = Modifier.padding(innerPadding))
