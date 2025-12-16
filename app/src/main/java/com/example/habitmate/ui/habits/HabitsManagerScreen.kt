@@ -94,22 +94,7 @@ fun HabitsManagerScreen(
                             .padding(horizontal = 24.dp)
                             .padding(top = 24.dp)
     ) {
-        // Header
-        Text(
-                text = "Manage Habits",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = TextDark
-        )
-        Text(
-                text = "Edit or remove your daily rituals",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Search Bar (Clean White)
+        // Search Bar
         OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },

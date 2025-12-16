@@ -168,15 +168,28 @@ fun HabitMateHomeScreen(
 
         Scaffold(
                 topBar = {
+                        val title =
+                                if (currentDestination == HabitMateDestination.HOME)
+                                        "Hello, Mate! 👋"
+                                else "Manage Habits"
+                        val subtitle =
+                                if (currentDestination == HabitMateDestination.HOME)
+                                        dateLabelFor(selectedDate, today)
+                                else "Edit or remove your daily rituals"
+
                         ModernTopBar(
-                                title = "Hello, Mate! 👋", // Sapaan personal
-                                subtitle = dateLabelFor(selectedDate, today),
+                                title = title,
+                                subtitle = subtitle,
                                 onSettingsClick = { /* TODO */},
                                 onDateClick = {
-                                        // Quick return to today with animated scroll
-                                        selectedDate = today
-                                        coroutineScope.launch {
-                                                dateStripListState.animateScrollToItem(todayIndex)
+                                        if (currentDestination == HabitMateDestination.HOME) {
+                                                // Quick return to today with animated scroll
+                                                selectedDate = today
+                                                coroutineScope.launch {
+                                                        dateStripListState.animateScrollToItem(
+                                                                todayIndex
+                                                        )
+                                                }
                                         }
                                 }
                         )
