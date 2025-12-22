@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -174,7 +173,7 @@ fun HabitListItem(habit: HabitUi, onDeleteClick: () -> Unit, onEditClick: () -> 
             color = SurfaceColor,
             shadowElevation = 1.dp, // Subtle shadow for depth
             border = BorderStroke(1.dp, Color(0xFFE2E8F0)), // Very light gray border
-            modifier = Modifier.fillMaxWidth().clickable { onEditClick() }
+            modifier = Modifier.fillMaxWidth()
     ) {
         Row(
                 modifier = Modifier.padding(16.dp),

@@ -169,13 +169,18 @@ fun HabitMateHomeScreen(
         Scaffold(
                 topBar = {
                         val title =
-                                if (currentDestination == HabitMateDestination.HOME)
-                                        "Hello, Mate! 👋"
-                                else "Manage Habits"
+                                when (currentDestination) {
+                                        HabitMateDestination.HOME -> "Hello, Mate! 👋"
+                                        HabitMateDestination.STATS -> "Statistics"
+                                        else -> "Manage Habits"
+                                }
                         val subtitle =
-                                if (currentDestination == HabitMateDestination.HOME)
-                                        dateLabelFor(selectedDate, today)
-                                else "Edit or remove your daily rituals"
+                                when (currentDestination) {
+                                        HabitMateDestination.HOME ->
+                                                dateLabelFor(selectedDate, today)
+                                        HabitMateDestination.STATS -> "Your progress at a glance"
+                                        else -> "Edit or remove your daily rituals"
+                                }
 
                         ModernTopBar(
                                 title = title,
@@ -244,6 +249,12 @@ fun HabitMateHomeScreen(
                                         onHabitClick = { selectedHabit = it },
                                         startAnimation = hasAnimated,
                                         viewModel = viewModel
+                                )
+                        }
+                        HabitMateDestination.STATS -> {
+                                com.example.habitmate.ui.stats.StatsScreen(
+                                        habits = habits,
+                                        modifier = Modifier.padding(innerPadding)
                                 )
                         }
                         HabitMateDestination.HABITS -> {
