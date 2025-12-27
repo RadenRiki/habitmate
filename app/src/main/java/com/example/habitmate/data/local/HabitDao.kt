@@ -20,4 +20,7 @@ interface HabitDao {
     @Delete suspend fun deleteHabit(habit: HabitEntity)
 
     @Query("UPDATE habits SET current = 0, isDoneToday = 0") suspend fun resetDailyProgress()
+
+    @Query("UPDATE habits SET streak = :streak WHERE id = :id")
+    suspend fun updateStreak(id: Int, streak: Int)
 }

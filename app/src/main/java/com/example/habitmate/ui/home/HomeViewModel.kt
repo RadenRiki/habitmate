@@ -151,8 +151,8 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                         isDone = isDone
                 )
 
-                // Logic for Streak optimization (Optional, can be added later or now)
-                // For now just fix the visual bug
+                // Refresh Streak
+                repository.refreshStreak(habit.id)
             }
         }
     }
@@ -173,6 +173,9 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                         progress = newCurrent,
                         isDone = isDone
                 )
+
+                // Refresh Streak
+                repository.refreshStreak(habit.id)
             }
         }
     }
