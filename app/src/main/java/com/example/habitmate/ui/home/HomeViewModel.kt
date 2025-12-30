@@ -40,7 +40,8 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                                     isDoneToday = entity.isDoneToday, // Base default
                                     streak = entity.streak,
                                     selectedDays = entity.selectedDays,
-                                    weeklyTarget = entity.weeklyTarget
+                                    weeklyTarget = entity.weeklyTarget,
+                                    createdDate = entity.createdDate
                             )
                         }
                     }
@@ -65,20 +66,61 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<List<HabitUi>> =
-            combine(allHabits, _selectedDate) { habits, date ->
-                        Triple(habits, date, repository.getHistoryForDate(date.toEpochDay()))
+            combine(allHabits, _selectedDate, repository.allHistory) { habits, date, allHistory ->
+                        Triple(habits, date, allHistory)
                     }
-                    .flatMapLatest { (habits, date, historyFlow) ->
-                        historyFlow.map { historyList ->
+                    .flatMapLatest { (habits, date, allHistory) ->
+                        repository.getHistoryForDate(date.toEpochDay()).map { dailyHistory ->
                             val dayOfWeek = date.dayOfWeek.value % 7
                             habits
                                     .filter { it.selectedDays[dayOfWeek] || it.weeklyTarget > 0 }
                                     .map { habit ->
-                                        // OVERRIDE with History Data
-                                        val history = historyList.find { it.habitId == habit.id }
+                                        // 1. Daily Progress Override
+                                        val dailyRecord =
+                                                dailyHistory.find { it.habitId == habit.id }
+
+                                        // 2. Stats Calculation
+                                        val habitHistory =
+                                                allHistory.filter {
+                                                    it.habitId == habit.id && it.isDone
+                                                }
+                                        val totalCompletions = habitHistory.size
+
+                                        // Success Rate: (Total Done / Days Since Creation) * 100
+                                        // Capping at 100% and handling division by zero
+                                        val createdDate = habit.createdDate
+                                        val todayEpoch = java.time.LocalDate.now().toEpochDay()
+                                        // Ensure at least 1 day to avoid div/0
+                                        val daysSinceCreation =
+                                                (todayEpoch - createdDate).coerceAtLeast(0) + 1
+                                        val successRate =
+                                                ((totalCompletions.toFloat() / daysSinceCreation) *
+                                                                100)
+                                                        .toInt()
+                                                        .coerceIn(0, 100)
+
+                                        // 3. Recent Activity (Last 7 Days)
+                                        // Map of Date -> isDone
+                                        val historyMap =
+                                                allHistory
+                                                        .filter { it.habitId == habit.id }
+                                                        .associate { it.date to it.isDone }
+                                        val recentHistory =
+                                                (0..6).map { offset ->
+                                                    val checkDate =
+                                                            todayEpoch -
+                                                                    (6 - offset) // Chronological
+                                                    // order: -6, -5
+                                                    // ... 0 (today)
+                                                    historyMap[checkDate] ?: false
+                                                }
+
                                         habit.copy(
-                                                current = history?.currentProgress ?: 0,
-                                                isDoneToday = history?.isDone ?: false
+                                                current = dailyRecord?.currentProgress ?: 0,
+                                                isDoneToday = dailyRecord?.isDone ?: false,
+                                                totalCompletions = totalCompletions,
+                                                successRate = successRate,
+                                                recentHistory = recentHistory
                                         )
                                     }
                         }
@@ -135,25 +177,29 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
 
     fun toggleHabit(id: Int) {
         val currentDate = _selectedDate.value
-        val historyList = uiState.value // Use current UI state which includes history overrides
+        val historyList = uiState.value
         val habit = historyList.find { it.id == id } ?: return
 
         viewModelScope.launch {
-            if (habit.current < habit.target) {
-                val newCurrent = habit.current + 1
-                val isDone = newCurrent >= habit.target
+            val newProgress = if (habit.current < habit.target) habit.current + 1 else habit.current
+            val isDone = newProgress >= habit.target
 
-                // Update History Table
-                repository.updateHabitProgress(
-                        habitId = habit.id,
-                        date = currentDate.toEpochDay(),
-                        progress = newCurrent,
-                        isDone = isDone
-                )
+            repository.updateHabitProgress(habit.id, currentDate.toEpochDay(), newProgress, isDone)
+            repository.refreshStreak(habit.id)
+        }
+    }
 
-                // Refresh Streak
-                repository.refreshStreak(habit.id)
-            }
+    fun decrementHabit(id: Int) {
+        val currentDate = _selectedDate.value
+        val historyList = uiState.value
+        val habit = historyList.find { it.id == id } ?: return
+
+        viewModelScope.launch {
+            val newProgress = (habit.current - 1).coerceAtLeast(0)
+            val isDone = newProgress >= habit.target
+
+            repository.updateHabitProgress(habit.id, currentDate.toEpochDay(), newProgress, isDone)
+            repository.refreshStreak(habit.id)
         }
     }
 
@@ -163,20 +209,8 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
         val habit = historyList.find { it.id == id } ?: return
 
         viewModelScope.launch {
-            if (habit.current > 0) {
-                val newCurrent = habit.current - 1
-                val isDone = newCurrent >= habit.target
-
-                repository.updateHabitProgress(
-                        habitId = habit.id,
-                        date = currentDate.toEpochDay(),
-                        progress = newCurrent,
-                        isDone = isDone
-                )
-
-                // Refresh Streak
-                repository.refreshStreak(habit.id)
-            }
+            repository.updateHabitProgress(habit.id, currentDate.toEpochDay(), 0, false)
+            repository.refreshStreak(habit.id)
         }
     }
 

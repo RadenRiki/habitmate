@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HabitHistoryDao {
+    @Query("SELECT * FROM habit_history") fun getAllHistory(): Flow<List<HabitHistoryEntity>>
+
     @Query("SELECT * FROM habit_history WHERE date = :date")
     fun getHistoryForDate(date: Long): Flow<List<HabitHistoryEntity>>
 

@@ -104,7 +104,12 @@ data class HabitUi(
         val isDoneToday: Boolean,
         val streak: Int = 0, // Menambahkan streak dummy
         val selectedDays: List<Boolean> = List(7) { true },
-        val weeklyTarget: Int = 0 // 0 means specific days, >0 means times per week
+        val weeklyTarget: Int = 0, // 0 means specific days, >0 means times per week
+        val createdDate: Long = LocalDate.now().toEpochDay(), // Added field
+        // New Stats Fields
+        val totalCompletions: Int = 0,
+        val successRate: Int = 0,
+        val recentHistory: List<Boolean> = emptyList()
 )
 
 enum class HabitMateDestination {
@@ -126,7 +131,7 @@ fun HabitMateHomeScreen(
 ) {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
-        var selectedHabit by remember { mutableStateOf<HabitUi?>(null) }
+        var selectedHabitId by remember { mutableStateOf<Int?>(null) } // Changed to ID
         var showAddSheet by remember { mutableStateOf(false) }
         val sheetState = rememberModalBottomSheetState()
         val habits by viewModel.uiState.collectAsState()
@@ -246,7 +251,7 @@ fun HabitMateHomeScreen(
                                         },
                                         onResetHabit = { habitId -> viewModel.resetHabit(habitId) },
                                         dateStripListState = dateStripListState,
-                                        onHabitClick = { selectedHabit = it },
+                                        onHabitClick = { selectedHabitId = it.id },
                                         startAnimation = hasAnimated,
                                         viewModel = viewModel
                                 )
@@ -288,25 +293,37 @@ fun HabitMateHomeScreen(
                 }
         }
 
+        val selectedHabit = habits.find { it.id == selectedHabitId }
         if (selectedHabit != null) {
                 ModalBottomSheet(
-                        onDismissRequest = { selectedHabit = null },
+                        onDismissRequest = { selectedHabitId = null },
                         sheetState = sheetState,
                         containerColor = CardSurface
                 ) {
                         HabitDetailScreen(
-                                habit = selectedHabit!!,
+                                habit = selectedHabit,
                                 onClose = {
                                         coroutineScope
                                                 .launch { sheetState.hide() }
                                                 .invokeOnCompletion {
                                                         if (!sheetState.isVisible)
-                                                                selectedHabit = null
+                                                                selectedHabitId = null
                                                 }
                                 },
-                                onEdit = { /* TODO: Edit */},
+                                onEdit = { id ->
+                                        // Close sheet then navigate
+                                        coroutineScope
+                                                .launch { sheetState.hide() }
+                                                .invokeOnCompletion {
+                                                        if (!sheetState.isVisible) {
+                                                                selectedHabitId = null
+                                                                onNavigateToEdit(id)
+                                                        }
+                                                }
+                                },
                                 onDelete = { /* TODO: Delete */},
-                                onToggleCompletion = { id -> viewModel.toggleHabit(id) }
+                                onToggleCompletion = { id -> viewModel.toggleHabit(id) },
+                                onDecrement = { id -> viewModel.decrementHabit(id) }
                         )
                 }
         }

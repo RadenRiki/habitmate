@@ -40,7 +40,8 @@ fun HabitDetailScreen(
         onClose: () -> Unit,
         onEdit: (Int) -> Unit,
         onDelete: (Int) -> Unit,
-        onToggleCompletion: (Int) -> Unit
+        onToggleCompletion: (Int) -> Unit,
+        onDecrement: (Int) -> Unit // Added callback
 ) {
         Column(
                 modifier =
@@ -136,13 +137,13 @@ fun HabitDetailScreen(
                         )
                         StatItem(
                                 icon = Icons.Default.Star,
-                                value = "85%", // Mock data
+                                value = "${habit.successRate}%",
                                 label = "Success",
                                 color = Color(0xFFEAB308) // Yellow
                         )
                         StatItem(
                                 icon = Icons.Default.History,
-                                value = "24", // Mock data
+                                value = "${habit.totalCompletions}",
                                 label = "Total",
                                 color = PrimaryColor
                         )
@@ -181,31 +182,62 @@ fun HabitDetailScreen(
                                         )
                                 }
 
-                                // Action Button (Toggle / Increment)
-                                Box(
-                                        modifier =
-                                                Modifier.size(64.dp)
-                                                        .clip(CircleShape)
-                                                        .background(
-                                                                if (habit.isDoneToday) OceanGradient
-                                                                else
-                                                                        Brush.linearGradient(
-                                                                                listOf(
-                                                                                        Color.Gray,
-                                                                                        Color.Gray
-                                                                                )
+                                // Actions: Minus and Plus
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Minus Button
+                                        Box(
+                                                modifier =
+                                                        Modifier.size(48.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                        Color.LightGray.copy(
+                                                                                alpha = 0.3f
                                                                         )
-                                                        )
-                                                        .clickable { onToggleCompletion(habit.id) },
-                                        contentAlignment = Alignment.Center
-                                ) {
-                                        // Simple Checkmark or Plus
-                                        Text(
-                                                text = if (habit.isDoneToday) "✓" else "+",
-                                                color = Color.White,
-                                                fontSize = 32.sp,
-                                                fontWeight = FontWeight.Bold
-                                        )
+                                                                )
+                                                                .clickable {
+                                                                        onDecrement(habit.id)
+                                                                },
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                Text(
+                                                        text = "-",
+                                                        color = TextSecondary,
+                                                        fontSize = 24.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(16.dp))
+
+                                        // Plus/Check Button
+                                        Box(
+                                                modifier =
+                                                        Modifier.size(64.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                        if (habit.isDoneToday)
+                                                                                OceanGradient
+                                                                        else
+                                                                                Brush.linearGradient(
+                                                                                        listOf(
+                                                                                                PrimaryColor,
+                                                                                                SecondaryColor
+                                                                                        )
+                                                                                )
+                                                                )
+                                                                .clickable {
+                                                                        onToggleCompletion(habit.id)
+                                                                },
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                // Simple Checkmark or Plus
+                                                Text(
+                                                        text = if (habit.isDoneToday) "✓" else "+",
+                                                        color = Color.White,
+                                                        fontSize = 32.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                )
+                                        }
                                 }
                         }
                 }
@@ -213,7 +245,7 @@ fun HabitDetailScreen(
                 // Mini Calendar Mockup
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                        text = "Recent Activity",
+                        text = "Recent Activity (Last 7 Days)",
                         style =
                                 MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
@@ -226,12 +258,23 @@ fun HabitDetailScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                        val days = listOf("M", "T", "W", "T", "F", "S", "S")
-                        days.forEachIndexed { index, day ->
-                                val isCompleted = index % 2 == 0 // Mock pattern
+                        // Generate last 7 days names
+                        val today = java.time.LocalDate.now()
+                        // 0..6 reversed implies: offset 0 is -6 days ago, offset 6 is today
+                        // But recentHistory list is ordered from -6 to 0 (oldest to newest)
+
+                        val history = habit.recentHistory
+
+                        (0..6).forEach { index ->
+                                // Calculate day letter
+                                val date = today.minusDays((6 - index).toLong())
+                                val dayLetter = date.dayOfWeek.name.first().toString()
+
+                                val isCompleted = history.getOrElse(index) { false }
+
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                                text = day,
+                                                text = dayLetter,
                                                 style =
                                                         MaterialTheme.typography.labelSmall.copy(
                                                                 color = TextSecondary
