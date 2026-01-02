@@ -1,3 +1,9 @@
+/*
+ * OLD ROOM DATABASE FILES - COMMENTED OUT
+ * Using Firebase Firestore now instead of Room local database
+ *
+ * Uncomment this file if you want to use Room again
+
 package com.example.habitmate.data.local
 
 import androidx.room.TypeConverter
@@ -29,3 +35,4 @@ class Converters {
         return data.split(",").map { it.toBoolean() }
     }
 }
+*/

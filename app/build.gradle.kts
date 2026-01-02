@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    // Add the Google services Gradle plugin
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -61,7 +63,17 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    // OLD ROOM DEPENDENCIES - COMMENTED OUT (Using Firebase Firestore now)
+    // implementation(libs.androidx.room.runtime)
+    // implementation(libs.androidx.room.ktx)
+    // ksp(libs.androidx.room.compiler)
+
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+    // Add the dependency for Firebase Analytics (required by Firebase setup)
+    implementation("com.google.firebase:firebase-analytics")
+    // Add the dependency for the Firebase Firestore
+    implementation("com.google.firebase:firebase-firestore")
+    // Add the dependency for Firebase Auth (for anonymous auth)
+    implementation("com.google.firebase:firebase-auth")
 }

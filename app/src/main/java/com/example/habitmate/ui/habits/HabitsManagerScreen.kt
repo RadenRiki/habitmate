@@ -42,7 +42,7 @@ private val DangerRed = Color(0xFFEF4444)
 fun HabitsManagerScreen(
         viewModel: HomeViewModel,
         modifier: Modifier = Modifier,
-        onNavigateToEdit: (Int) -> Unit
+        onNavigateToEdit: (String) -> Unit
 ) {
     val allHabits by viewModel.allHabits.collectAsState()
     var searchQuery by remember { mutableStateOf("") }

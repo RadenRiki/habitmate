@@ -1,3 +1,9 @@
+/*
+ * OLD ROOM DATABASE FILES - COMMENTED OUT
+ * Using Firebase Firestore now instead of Room local database
+ *
+ * Uncomment this file if you want to use Room again
+
 package com.example.habitmate.data.local
 
 import androidx.room.Entity
@@ -17,6 +23,7 @@ data class HabitEntity(
         val createdDate: Long = LocalDate.now().toEpochDay(),
         val isDoneToday: Boolean = false,
         val streak: Int = 0,
-        val selectedDays: List<Boolean> = List(7) { true }, // Sun-Sat
-        val weeklyTarget: Int = 0 // 0 means specific days, >0 means times per week
+        val selectedDays: List<Boolean> = List(7) { true },
+        val weeklyTarget: Int = 0
 )
+*/

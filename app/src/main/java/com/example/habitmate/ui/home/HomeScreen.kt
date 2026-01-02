@@ -94,7 +94,7 @@ enum class HabitTimeFilter {
 }
 
 data class HabitUi(
-        val id: Int,
+        val id: String,
         val title: String,
         val emoji: String, // Menambahkan emoji/icon
         val timeOfDay: HabitTimeOfDay,
@@ -126,12 +126,12 @@ enum class HabitMateDestination {
 fun HabitMateHomeScreen(
         onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> },
         onNavigateToHabitsManager: () -> Unit = {},
-        onNavigateToEdit: (Int) -> Unit = {},
+        onNavigateToEdit: (String) -> Unit = {},
         viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
         val today = remember { LocalDate.now() }
         var selectedDate by remember { mutableStateOf(today) }
-        var selectedHabitId by remember { mutableStateOf<Int?>(null) } // Changed to ID
+        var selectedHabitId by remember { mutableStateOf<String?>(null) } // Changed to String ID
         var showAddSheet by remember { mutableStateOf(false) }
         val sheetState = rememberModalBottomSheetState()
         val habits by viewModel.uiState.collectAsState()
@@ -561,8 +561,8 @@ fun TodayContent(
         progressToday: Float,
         doneToday: Int,
         totalHabitsToday: Int,
-        onToggleHabit: (Int) -> Unit,
-        onResetHabit: (Int) -> Unit,
+        onToggleHabit: (String) -> Unit,
+        onResetHabit: (String) -> Unit,
         dateStripListState: androidx.compose.foundation.lazy.LazyListState, // Added parameter
         onHabitClick: (HabitUi) -> Unit,
         startAnimation: Boolean,
@@ -975,8 +975,8 @@ fun FilterCapsuleRow(selected: HabitTimeFilter, onSelected: (HabitTimeFilter) ->
 fun LazyListScope.HabitList(
         habits: List<HabitUi>,
         filter: HabitTimeFilter,
-        onToggle: (Int) -> Unit,
-        onReset: (Int) -> Unit,
+        onToggle: (String) -> Unit,
+        onReset: (String) -> Unit,
         onHabitClick: (HabitUi) -> Unit,
         startAnimation: Boolean
 ) {

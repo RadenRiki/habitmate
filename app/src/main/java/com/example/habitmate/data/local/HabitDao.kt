@@ -1,3 +1,9 @@
+/*
+ * OLD ROOM DATABASE FILES - COMMENTED OUT
+ * Using Firebase Firestore now instead of Room local database
+ *
+ * Uncomment this file if you want to use Room again
+
 package com.example.habitmate.data.local
 
 import androidx.room.Dao
@@ -26,3 +32,4 @@ interface HabitDao {
     @Query("UPDATE habits SET streak = :streak WHERE id = :id")
     suspend fun updateStreak(id: Int, streak: Int)
 }
+*/

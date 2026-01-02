@@ -6,9 +6,9 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.habitmate.HabitMateApplication
-import com.example.habitmate.data.local.HabitEntity
-import com.example.habitmate.data.local.HabitHistoryEntity
-import com.example.habitmate.data.repository.HabitRepository
+import com.example.habitmate.data.model.Habit
+import com.example.habitmate.data.model.HabitHistory
+import com.example.habitmate.data.repository.FirestoreRepository
 import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +19,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
+// OLD ROOM IMPORTS - COMMENTED OUT
+// import com.example.habitmate.data.local.HabitEntity
+// import com.example.habitmate.data.local.HabitHistoryEntity
+// import com.example.habitmate.data.repository.HabitRepository
+
+class HomeViewModel(private val repository: FirestoreRepository) : ViewModel() {
 
     // 1. All Habits (For Master Page) & History Trigger
     private val _selectedDate = kotlinx.coroutines.flow.MutableStateFlow(LocalDate.now())
@@ -34,11 +39,11 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                                     id = entity.id,
                                     title = entity.title,
                                     emoji = entity.emoji,
-                                    timeOfDay = entity.timeOfDay,
+                                    timeOfDay = entity.toTimeOfDay(),
                                     unitLabel = entity.unitLabel,
-                                    current = entity.current, // Base default
+                                    current = entity.current,
                                     target = entity.target,
-                                    isDoneToday = entity.isDoneToday, // Base default
+                                    isDoneToday = entity.isDoneToday,
                                     streak = entity.streak,
                                     selectedDays = entity.selectedDays,
                                     weeklyTarget = entity.weeklyTarget,
@@ -54,7 +59,6 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
 
     fun updateSelectedDate(date: LocalDate) {
         _selectedDate.value = date
-        // No need to fetch manually, Flow will trigger
     }
 
     // 3. Animation State
@@ -107,8 +111,8 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
 
     private fun mapHabitToUi(
             habit: HabitUi,
-            dailyHistory: List<HabitHistoryEntity>,
-            allHistory: List<HabitHistoryEntity>,
+            dailyHistory: List<HabitHistory>,
+            allHistory: List<HabitHistory>,
             referenceDate: LocalDate
     ): HabitUi {
         // 1. Daily Progress Override
@@ -126,7 +130,6 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                 ((totalCompletions.toFloat() / daysSinceCreation) * 100).toInt().coerceIn(0, 100)
 
         // 3. Recent Activity (Last 7 Days from referenceDate)
-        // Map of Date -> isDone
         val historyMap =
                 allHistory.filter { it.habitId == habit.id }.associate { it.date to it.isDone }
         val referenceEpoch = referenceDate.toEpochDay()
@@ -156,12 +159,12 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
     ) {
         viewModelScope.launch {
             repository.insertHabit(
-                    HabitEntity(
+                    Habit(
                             title = title,
                             emoji = emoji,
                             target = target,
                             unitLabel = unit,
-                            timeOfDay = timeOfDay,
+                            timeOfDay = timeOfDay.name,
                             selectedDays = selectedDays,
                             weeklyTarget = weeklyTarget
                     )
@@ -172,24 +175,25 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
     fun updateHabit(updatedHabit: HabitUi) {
         viewModelScope.launch {
             repository.updateHabit(
-                    HabitEntity(
+                    Habit(
                             id = updatedHabit.id,
                             title = updatedHabit.title,
                             emoji = updatedHabit.emoji,
                             target = updatedHabit.target,
                             unitLabel = updatedHabit.unitLabel,
-                            timeOfDay = updatedHabit.timeOfDay,
+                            timeOfDay = updatedHabit.timeOfDay.name,
                             selectedDays = updatedHabit.selectedDays,
                             weeklyTarget = updatedHabit.weeklyTarget,
                             current = updatedHabit.current,
                             isDoneToday = updatedHabit.isDoneToday,
-                            streak = updatedHabit.streak
+                            streak = updatedHabit.streak,
+                            createdDate = updatedHabit.createdDate
                     )
             )
         }
     }
 
-    fun toggleHabit(id: Int) {
+    fun toggleHabit(id: String) {
         val currentDate = _selectedDate.value
         val historyList = uiState.value
         val habit = historyList.find { it.id == id } ?: return
@@ -203,7 +207,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
         }
     }
 
-    fun decrementHabit(id: Int) {
+    fun decrementHabit(id: String) {
         val currentDate = _selectedDate.value
         val historyList = uiState.value
         val habit = historyList.find { it.id == id } ?: return
@@ -217,7 +221,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
         }
     }
 
-    fun resetHabit(id: Int) {
+    fun resetHabit(id: String) {
         val currentDate = _selectedDate.value
         val historyList = uiState.value
         val habit = historyList.find { it.id == id } ?: return
@@ -229,22 +233,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
     }
 
     fun deleteHabit(habit: HabitUi) {
-        viewModelScope.launch {
-            val entity =
-                    HabitEntity(
-                            id = habit.id,
-                            title = habit.title,
-                            emoji = habit.emoji,
-                            timeOfDay = habit.timeOfDay,
-                            unitLabel = habit.unitLabel,
-                            current = habit.current,
-                            target = habit.target,
-                            isDoneToday = habit.isDoneToday,
-                            streak = habit.streak,
-                            selectedDays = habit.selectedDays
-                    )
-            repository.deleteHabit(entity)
-        }
+        viewModelScope.launch { repository.deleteHabit(habit.id) }
     }
 
     // Define ViewModel factory in a companion object
@@ -256,11 +245,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                             modelClass: Class<T>,
                             extras: CreationExtras
                     ): T {
-                        // Get the Application object from extras
                         val application = checkNotNull(extras[APPLICATION_KEY])
-                        // Create a SavedStateHandle for this ViewModel (if needed) like:
-                        // val savedStateHandle = extras.createSavedStateHandle()
-
                         return HomeViewModel((application as HabitMateApplication).repository) as T
                     }
                 }

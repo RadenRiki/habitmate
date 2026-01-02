@@ -1,3 +1,9 @@
+/*
+ * OLD ROOM DATABASE FILES - COMMENTED OUT
+ * Using Firebase Firestore now instead of Room local database
+ *
+ * Uncomment this file if you want to use Room again
+
 package com.example.habitmate.data.local
 
 import androidx.room.Dao
@@ -19,7 +25,7 @@ interface HabitHistoryDao {
     @Query("SELECT * FROM habit_history WHERE habitId = :habitId")
     fun getHistoryForHabit(habitId: Int): Flow<List<HabitHistoryEntity>>
 
-    // For calculating stats
     @Query("SELECT * FROM habit_history WHERE habitId = :habitId AND isDone = 1")
     suspend fun getCompletedHistory(habitId: Int): List<HabitHistoryEntity>
 }
+*/

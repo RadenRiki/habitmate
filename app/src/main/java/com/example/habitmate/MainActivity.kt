@@ -103,13 +103,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                     ) { backStackEntry ->
-                        val habitId = backStackEntry.arguments?.getString("habitId")?.toIntOrNull()
+                        val habitId = backStackEntry.arguments?.getString("habitId")
                         val initialTitle = backStackEntry.arguments?.getString("title") ?: ""
                         val initialEmoji = backStackEntry.arguments?.getString("emoji") ?: "💧"
 
                         // If finding existing habit for edit
                         val allHabits = viewModel.allHabits.collectAsState().value
-                        val habitToEdit = allHabits.find { it.id == habitId }
+                        val habitToEdit =
+                                if (!habitId.isNullOrEmpty()) allHabits.find { it.id == habitId }
+                                else null
 
                         CreateHabitScreen(
                                 onBack = { navController.popBackStack() },

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "776193939414",
+    "project_id": "habitmate-c7632",
+    "storage_bucket": "habitmate-c7632.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:776193939414:android:05b4eb3aea539041b8f677",
+        "android_client_info": {
+          "package_name": "com.example.habitmate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHkOyXFBn6nEJlwsi7Q4CGxRSC3EYkckY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

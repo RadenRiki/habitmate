@@ -616,9 +616,8 @@ fun CreateHabitScreen(
 
                                         val newHabit =
                                                 HabitUi(
-                                                        id = 0, // Ignored by onSave logic for
-                                                        // updates, but needed for data
-                                                        // class
+                                                        id = "", // Empty for new habits,
+                                                        // Firestore generates ID
                                                         title = title.ifEmpty { "New Habit" },
                                                         emoji = selectedEmoji,
                                                         timeOfDay = selectedTime,

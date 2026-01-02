@@ -38,10 +38,10 @@ private val OceanGradient = Brush.linearGradient(colors = listOf(PrimaryColor, S
 fun HabitDetailScreen(
         habit: HabitUi,
         onClose: () -> Unit,
-        onEdit: (Int) -> Unit,
-        onDelete: (Int) -> Unit,
-        onToggleCompletion: (Int) -> Unit,
-        onDecrement: (Int) -> Unit // Added callback
+        onEdit: (String) -> Unit,
+        onDelete: (String) -> Unit,
+        onToggleCompletion: (String) -> Unit,
+        onDecrement: (String) -> Unit // Added callback
 ) {
         Column(
                 modifier =

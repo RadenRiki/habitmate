@@ -1,3 +1,10 @@
+/*
+ * OLD ROOM REPOSITORY - COMMENTED OUT
+ * Using Firebase Firestore now instead of Room local database
+ * See FirestoreRepository.kt for the new implementation
+ *
+ * Uncomment this file if you want to use Room again
+
 package com.example.habitmate.data.repository
 
 import com.example.habitmate.data.local.HabitDao
@@ -153,3 +160,4 @@ class HabitRepository(private val habitDao: HabitDao, private val historyDao: Ha
         habitDao.updateStreak(habitId, currentStreak)
     }
 }
+*/
