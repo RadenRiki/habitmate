@@ -135,6 +135,7 @@ fun HabitMateHomeScreen(
         var showAddSheet by remember { mutableStateOf(false) }
         val sheetState = rememberModalBottomSheetState()
         val habits by viewModel.uiState.collectAsState()
+        val statsList by viewModel.statsUiState.collectAsState()
 
         val hasAnimated by viewModel.hasAnimated.collectAsState()
 
@@ -258,7 +259,7 @@ fun HabitMateHomeScreen(
                         }
                         HabitMateDestination.STATS -> {
                                 com.example.habitmate.ui.stats.StatsScreen(
-                                        habits = habits,
+                                        habits = statsList,
                                         modifier = Modifier.padding(innerPadding)
                                 )
                         }

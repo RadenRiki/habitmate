@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.habitmate.HabitMateApplication
 import com.example.habitmate.data.local.HabitEntity
+import com.example.habitmate.data.local.HabitHistoryEntity
 import com.example.habitmate.data.repository.HabitRepository
 import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
@@ -75,53 +76,7 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                             habits
                                     .filter { it.selectedDays[dayOfWeek] || it.weeklyTarget > 0 }
                                     .map { habit ->
-                                        // 1. Daily Progress Override
-                                        val dailyRecord =
-                                                dailyHistory.find { it.habitId == habit.id }
-
-                                        // 2. Stats Calculation
-                                        val habitHistory =
-                                                allHistory.filter {
-                                                    it.habitId == habit.id && it.isDone
-                                                }
-                                        val totalCompletions = habitHistory.size
-
-                                        // Success Rate: (Total Done / Days Since Creation) * 100
-                                        // Capping at 100% and handling division by zero
-                                        val createdDate = habit.createdDate
-                                        val todayEpoch = java.time.LocalDate.now().toEpochDay()
-                                        // Ensure at least 1 day to avoid div/0
-                                        val daysSinceCreation =
-                                                (todayEpoch - createdDate).coerceAtLeast(0) + 1
-                                        val successRate =
-                                                ((totalCompletions.toFloat() / daysSinceCreation) *
-                                                                100)
-                                                        .toInt()
-                                                        .coerceIn(0, 100)
-
-                                        // 3. Recent Activity (Last 7 Days)
-                                        // Map of Date -> isDone
-                                        val historyMap =
-                                                allHistory
-                                                        .filter { it.habitId == habit.id }
-                                                        .associate { it.date to it.isDone }
-                                        val recentHistory =
-                                                (0..6).map { offset ->
-                                                    val checkDate =
-                                                            todayEpoch -
-                                                                    (6 - offset) // Chronological
-                                                    // order: -6, -5
-                                                    // ... 0 (today)
-                                                    historyMap[checkDate] ?: false
-                                                }
-
-                                        habit.copy(
-                                                current = dailyRecord?.currentProgress ?: 0,
-                                                isDoneToday = dailyRecord?.isDone ?: false,
-                                                totalCompletions = totalCompletions,
-                                                successRate = successRate,
-                                                recentHistory = recentHistory
-                                        )
+                                        mapHabitToUi(habit, dailyHistory, allHistory, date)
                                     }
                         }
                     }
@@ -130,6 +85,65 @@ class HomeViewModel(private val repository: HabitRepository) : ViewModel() {
                             started = WhileSubscribed(5000),
                             initialValue = emptyList()
                     )
+
+    // 4. Stats UI State (All Habits, Relative to Today)
+    val statsUiState: StateFlow<List<HabitUi>> =
+            combine(allHabits, repository.allHistory) { habits, allHistory ->
+                        Pair(habits, allHistory)
+                    }
+                    .flatMapLatest { (habits, allHistory) ->
+                        val today = LocalDate.now()
+                        repository.getHistoryForDate(today.toEpochDay()).map { dailyHistory ->
+                            habits.map { habit ->
+                                mapHabitToUi(habit, dailyHistory, allHistory, today)
+                            }
+                        }
+                    }
+                    .stateIn(
+                            scope = viewModelScope,
+                            started = WhileSubscribed(5000),
+                            initialValue = emptyList()
+                    )
+
+    private fun mapHabitToUi(
+            habit: HabitUi,
+            dailyHistory: List<HabitHistoryEntity>,
+            allHistory: List<HabitHistoryEntity>,
+            referenceDate: LocalDate
+    ): HabitUi {
+        // 1. Daily Progress Override
+        val dailyRecord = dailyHistory.find { it.habitId == habit.id }
+
+        // 2. Stats Calculation
+        val habitHistory = allHistory.filter { it.habitId == habit.id && it.isDone }
+        val totalCompletions = habitHistory.size
+
+        // Success Rate: (Total Done / Days Since Creation) * 100
+        val createdDate = habit.createdDate
+        val todayEpoch = java.time.LocalDate.now().toEpochDay()
+        val daysSinceCreation = (todayEpoch - createdDate).coerceAtLeast(0) + 1
+        val successRate =
+                ((totalCompletions.toFloat() / daysSinceCreation) * 100).toInt().coerceIn(0, 100)
+
+        // 3. Recent Activity (Last 7 Days from referenceDate)
+        // Map of Date -> isDone
+        val historyMap =
+                allHistory.filter { it.habitId == habit.id }.associate { it.date to it.isDone }
+        val referenceEpoch = referenceDate.toEpochDay()
+        val recentHistory =
+                (0..6).map { offset ->
+                    val checkDate = referenceEpoch - (6 - offset)
+                    historyMap[checkDate] ?: false
+                }
+
+        return habit.copy(
+                current = dailyRecord?.currentProgress ?: 0,
+                isDoneToday = dailyRecord?.isDone ?: false,
+                totalCompletions = totalCompletions,
+                successRate = successRate,
+                recentHistory = recentHistory
+        )
+    }
 
     fun addHabit(
             title: String,
