@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.habitmate" />
+                  <option name="mobileSdkAppId" value="1:776193939414:android:05b4eb3aea539041b8f677" />
+                  <option name="projectId" value="habitmate-c7632" />
+                  <option name="projectNumber" value="776193939414" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -122,20 +122,44 @@ class HomeViewModel(private val repository: FirestoreRepository) : ViewModel() {
         val habitHistory = allHistory.filter { it.habitId == habit.id && it.isDone }
         val totalCompletions = habitHistory.size
 
-        // Success Rate: (Total Done / Days Since Creation) * 100
-        val createdDate = habit.createdDate
+        // Success Rate: (Done in Last 7 Days / Scheduled Days in Last 7 Days) * 100
         val todayEpoch = java.time.LocalDate.now().toEpochDay()
-        val daysSinceCreation = (todayEpoch - createdDate).coerceAtLeast(0) + 1
-        val successRate =
-                ((totalCompletions.toFloat() / daysSinceCreation) * 100).toInt().coerceIn(0, 100)
+        val sevenDaysAgo = todayEpoch - 6 // Include today = 7 days total
 
-        // 3. Recent Activity (Last 7 Days from referenceDate)
+        // Count completions in last 7 days
+        val allHabitHistory = allHistory.filter { it.habitId == habit.id }
+        val completionsLast7Days =
+                allHabitHistory.count {
+                    it.isDone && it.date >= sevenDaysAgo && it.date <= todayEpoch
+                }
+
+        // Count scheduled days in last 7 days
+        var scheduledDaysLast7 = 0
+        for (day in sevenDaysAgo..todayEpoch) {
+            val dateObj = java.time.LocalDate.ofEpochDay(day)
+            val dayOfWeek = dateObj.dayOfWeek.value % 7 // 0=Sun, 6=Sat
+            if (habit.selectedDays.getOrElse(dayOfWeek) { true }) {
+                scheduledDaysLast7++
+            }
+        }
+
+        val successRate =
+                if (scheduledDaysLast7 > 0) {
+                    ((completionsLast7Days.toFloat() / scheduledDaysLast7) * 100)
+                            .toInt()
+                            .coerceIn(0, 100)
+                } else {
+                    0
+                }
+
+        // 3. Recent Activity (Last 7 Days from TODAY, not referenceDate)
+        // This ensures HabitDetailScreen always shows correct data
         val historyMap =
                 allHistory.filter { it.habitId == habit.id }.associate { it.date to it.isDone }
-        val referenceEpoch = referenceDate.toEpochDay()
+        val todayForHistory = java.time.LocalDate.now().toEpochDay()
         val recentHistory =
                 (0..6).map { offset ->
-                    val checkDate = referenceEpoch - (6 - offset)
+                    val checkDate = todayForHistory - (6 - offset)
                     historyMap[checkDate] ?: false
                 }
 
