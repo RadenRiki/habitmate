@@ -18,6 +18,10 @@ import com.example.habitmate.ui.habits.HabitsManagerScreen
 import com.example.habitmate.ui.home.CreateHabitScreen
 import com.example.habitmate.ui.home.HabitMateHomeScreen
 import com.example.habitmate.ui.home.HomeViewModel
+import com.example.habitmate.ui.settings.AboutScreen
+import com.example.habitmate.ui.settings.PrivacyScreen
+import com.example.habitmate.ui.settings.SettingsScreen
+import com.example.habitmate.ui.settings.TermsScreen
 import com.example.habitmate.ui.splash.SplashScreen
 import com.example.habitmate.ui.theme.HabitmateTheme
 
@@ -61,6 +65,7 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToEdit = { habitId ->
                                     navController.navigate("create_habit?habitId=$habitId")
                                 },
+                                onNavigateToSettings = { navController.navigate("settings") },
                                 viewModel = viewModel
                         )
                     }
@@ -145,6 +150,81 @@ class MainActivity : ComponentActivity() {
                                 habitToEdit = habitToEdit
                         )
                     }
+
+                    // Settings Screen
+                    composable(
+                            "settings",
+                            enterTransition = {
+                                slideIntoContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Left,
+                                        tween(400)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Right,
+                                        tween(400)
+                                )
+                            }
+                    ) {
+                        SettingsScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToTerms = { navController.navigate("terms") },
+                                onNavigateToPrivacy = { navController.navigate("privacy") },
+                                onNavigateToAbout = { navController.navigate("about") }
+                        )
+                    }
+
+                    // Terms Screen
+                    composable(
+                            "terms",
+                            enterTransition = {
+                                slideIntoContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Left,
+                                        tween(400)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Right,
+                                        tween(400)
+                                )
+                            }
+                    ) { TermsScreen(onBack = { navController.popBackStack() }) }
+
+                    // Privacy Screen
+                    composable(
+                            "privacy",
+                            enterTransition = {
+                                slideIntoContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Left,
+                                        tween(400)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Right,
+                                        tween(400)
+                                )
+                            }
+                    ) { PrivacyScreen(onBack = { navController.popBackStack() }) }
+
+                    // About Screen
+                    composable(
+                            "about",
+                            enterTransition = {
+                                slideIntoContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Left,
+                                        tween(400)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                        AnimatedContentTransitionScope.SlideDirection.Right,
+                                        tween(400)
+                                )
+                            }
+                    ) { AboutScreen(onBack = { navController.popBackStack() }) }
                 }
             }
         }

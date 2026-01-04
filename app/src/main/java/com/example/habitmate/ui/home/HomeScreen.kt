@@ -25,12 +25,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -115,8 +113,7 @@ data class HabitUi(
 enum class HabitMateDestination {
         HOME,
         STATS,
-        HABITS,
-        PROFILE
+        HABITS
 }
 
 // ---------- ROOT SCREEN ----------
@@ -127,6 +124,7 @@ fun HabitMateHomeScreen(
         onNavigateToCreateHabit: (String?, String?) -> Unit = { _, _ -> },
         onNavigateToHabitsManager: () -> Unit = {},
         onNavigateToEdit: (String) -> Unit = {},
+        onNavigateToSettings: () -> Unit = {},
         viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
         val today = remember { LocalDate.now() }
@@ -191,7 +189,7 @@ fun HabitMateHomeScreen(
                         ModernTopBar(
                                 title = title,
                                 subtitle = subtitle,
-                                onSettingsClick = { /* TODO */},
+                                onSettingsClick = onNavigateToSettings,
                                 onDateClick = {
                                         if (currentDestination == HabitMateDestination.HOME) {
                                                 // Quick return to today with animated scroll
@@ -422,12 +420,6 @@ fun BottomNavBar(
                                 "Habits",
                                 Icons.Outlined.Checklist,
                                 Icons.Default.Checklist
-                        ),
-                        NavItem(
-                                HabitMateDestination.PROFILE,
-                                "Profile",
-                                Icons.Outlined.Person,
-                                Icons.Default.Person
                         )
                 )
 
