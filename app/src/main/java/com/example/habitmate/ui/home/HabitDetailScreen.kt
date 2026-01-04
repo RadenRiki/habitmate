@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -59,13 +58,6 @@ fun HabitDetailScreen(
                                 Icon(
                                         Icons.Default.Edit,
                                         contentDescription = "Edit",
-                                        tint = TextSecondary
-                                )
-                        }
-                        IconButton(onClick = { /* TODO: Confirm Delete */}) {
-                                Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete",
                                         tint = TextSecondary
                                 )
                         }
@@ -138,7 +130,7 @@ fun HabitDetailScreen(
                         StatItem(
                                 icon = Icons.Default.Star,
                                 value = "${habit.successRate}%",
-                                label = "Success",
+                                label = "Success (7 Days)",
                                 color = Color(0xFFEAB308) // Yellow
                         )
                         StatItem(

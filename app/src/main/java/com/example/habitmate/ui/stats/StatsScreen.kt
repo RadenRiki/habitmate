@@ -73,7 +73,7 @@ fun StatsScreen(habits: List<HabitUi>, modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                                 StatCard(
-                                        title = "Avg. Completion",
+                                        title = "Avg. Completion (7 Days)",
                                         value = "$completionRate%",
                                         icon = Icons.Default.TrendingUp,
                                         color = SuccessGreen,
