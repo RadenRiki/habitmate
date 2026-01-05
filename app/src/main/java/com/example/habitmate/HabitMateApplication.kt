@@ -29,6 +29,9 @@ class HabitMateApplication : Application() {
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
 
+        // Create notification channel
+        com.example.habitmate.notification.NotificationHelper.createNotificationChannel(this)
+
         // Initialize Anonymous Auth
         applicationScope.launch {
             val success = repository.ensureAuthenticated()

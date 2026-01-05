@@ -160,7 +160,8 @@ class MainActivity : ComponentActivity() {
                                         tween(400)
                                 )
                             },
-                            exitTransition = {
+                            exitTransition = { fadeOut(animationSpec = tween(200)) },
+                            popExitTransition = {
                                 slideOutOfContainer(
                                         AnimatedContentTransitionScope.SlideDirection.Right,
                                         tween(400)
